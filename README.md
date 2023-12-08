@@ -7,7 +7,7 @@ use this.
 
 - [ ] Board
     - [ ] Draw using ncurses
-- [ ] Handle Pieces
+- [ ] Handle pieces
     - [ ] Define
     - [ ] Spawn
         - [ ] Add 7-bag and draw queue
@@ -15,6 +15,9 @@ use this.
     - [ ] Move
         - [ ] DAS
         - [ ] ARR
+        - [ ] Gravity
     - [ ] Rotate (SRS)
-- [ ] Add Hold
+    - [ ] Lock
+        - [ ] Delay
+- [ ] Add hold
 - [ ] Draw ghost piece
