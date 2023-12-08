@@ -1,10 +1,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <time.h>
 #include <ncurses.h>
 
 #define BOARD_HEIGHT 20
 #define BOARD_WIDTH 10
+#define SPAWN_X 4
+#define SPAWN_Y 0
 
 typedef struct Node {
     unsigned char row[BOARD_WIDTH];
@@ -25,14 +28,14 @@ const int pieces[7][4][3][2] = {
     // I
     {
         {{-1, 0}, {1, 0}, {2, 0}},
-         // [][]<>[]
+         // []<>[][]
         {{0, 1}, {0, -1}, {0, -2}},
         // []
         // <>
         // []
         // []
         {{-2, 0}, {-1, 0}, {1, 0}},
-         // []<>[][]
+         // [][]<>[]
         {{0, 2}, {0, 1}, {0, -1}},
         // []
         // []
@@ -150,7 +153,7 @@ int count_nodes(Node *n) {
     return length;
 }
 
-void draw_board(Node *n, struct piece p) {
+void draw_board(Node *n, struct piece *p) {
     int height = count_nodes(n);
     printf("\n\n");
     for (int i = 0; i < BOARD_HEIGHT; i++) {
@@ -158,8 +161,8 @@ void draw_board(Node *n, struct piece p) {
         for (int j = 0; j < BOARD_WIDTH; j++) {
             unsigned char found = 0;
             for (int k = 0; k < 3; k++) {
-                if (p.x + pieces[p.type][p.rotation][k][0] == j &&
-                    p.y - pieces[p.type][p.rotation][k][1] == i) {
+                if (p->x + pieces[p->type][p->rotation][k][0] == j &&
+                    p->y - pieces[p->type][p->rotation][k][1] == i) {
                     printf("[]");
                     found = 1;
                     break;
@@ -170,7 +173,7 @@ void draw_board(Node *n, struct piece p) {
             if (BOARD_HEIGHT - height <= i && n != NULL && n->row[j]) {
                 printf("[]");
                 n = n->next;
-            } else if (p.x == j && p.y == i)
+            } else if (p->x == j && p->y == i)
                 printf("()");
             else
                 printf("  ");
@@ -213,17 +216,60 @@ void print_pieces() {
                 }
                 printf("\n");
             }
-
         }
     }
 }
 
-int main() {
-    Node *board;
-    board = malloc(sizeof(Node));
-    board->next = NULL;
+void queue_pop(struct piece *p, int queue[], int queue_pos) {
+    p->type = queue[queue_pos];
+    p->x = SPAWN_X;
+    p->y = SPAWN_Y;
+    p->rotation = 0;
+    int rand = random() % 7;
 
-    struct piece curr = {4, 0, 5, 0};
+    while (queue_pos != 0) {
+        int dup = 0;
+        rand = random() % 7;
+        for (int i = 0; i < queue_pos; i++) {
+            if (rand == queue[i])
+                dup = 1;
+        }
+        if (!dup)
+            break;
+    }
+
+    queue[queue_pos] = rand;
+}
+
+void queue_init (int queue[]) {
+    for (int i = 0; i < 7; i++) {
+        int rand = random() % 7;
+        while (i != 0) {
+            int dup = 0;
+            rand = random() % 7;
+            for (int j = 0; j < i; j++) {
+                if (rand == queue[j])
+                    dup = 1;
+            }
+            if (!dup)
+                break;
+        }
+        queue[i] = rand;
+    }
+}
+
+int main() {
+    Node *board = malloc(sizeof(Node));
+    board->next = NULL;
+    struct piece *curr = malloc(sizeof(struct piece));
+
+    srandom(time(NULL));
+
+    int queue[7];
+    queue_init(queue);
+
+    int queue_pos = 1;
+    queue_pop(curr, queue, 0);
 
     // Game Loop
 
@@ -232,8 +278,7 @@ int main() {
         printf("\e[1;1H\e[2J");
         draw_board(board, curr);
         usleep(500 * 1000);
-        curr.y = (curr.y + 1) % BOARD_HEIGHT;
-        curr.rotation = (curr.rotation + 1) % 4;
+        curr->y = (curr->y + 1) % BOARD_HEIGHT;
     }
 
     return 0;
