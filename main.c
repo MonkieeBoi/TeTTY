@@ -11,6 +11,13 @@ typedef struct Node {
     struct Node *next;
 } Node;
 
+struct piece {
+    unsigned char x;
+    unsigned char y;
+    unsigned char type;
+    unsigned char rotation;
+};
+
 // TODO: figure out better way to store this
 // Defined by offset from the piece center
 // 7 pieces, 4 rotations, 3 coordinate pairs
@@ -68,18 +75,18 @@ const int pieces[7][4][3][2] = {
     },
     // O
     {
+        {{0, 1}, {1, 1}, {1, 0}},
+        // [][]
+        // <>[]
         {{1, 0}, {0, -1}, {1, -1}},
         // <>[]
         // [][]
         {{-1, 0}, {-1, -1}, {0, -1}},
         // []<>
         // [][]
-        {{-1, 1}, {0, 1}, {-1, 0}},
+        {{-1, 1}, {0, 1}, {-1, 0}}
         // [][]
         // []<>
-        {{0, 1}, {1, 1}, {1, 0}}
-        // [][]
-        // <>[]
     },
     // S
     {
@@ -143,23 +150,32 @@ int count_nodes(Node *n) {
     return length;
 }
 
-void draw_board(Node *n) {
+void draw_board(Node *n, struct piece p) {
     int height = count_nodes(n);
-    printf("   ┏━━━━━━━━━━━━━━━━━━━━┓\n");
+    printf("\n\n");
     for (int i = 0; i < BOARD_HEIGHT; i++) {
         printf("%02d ┃", i);
-        if (BOARD_HEIGHT - height <= i && n != NULL) {
-            for (int j = 0; j < BOARD_WIDTH; j++) {
-                if (n->row[j])
+        for (int j = 0; j < BOARD_WIDTH; j++) {
+            unsigned char found = 0;
+            for (int k = 0; k < 3; k++) {
+                if (p.x + pieces[p.type][p.rotation][k][0] == j &&
+                    p.y - pieces[p.type][p.rotation][k][1] == i) {
                     printf("[]");
-                else
-                    printf("  ");
+                    found = 1;
+                    break;
+                }
             }
-            printf("┃\n");
-            n = n->next;
-        } else {
-            printf("                    ┃\n");
+            if (found)
+                continue;
+            if (BOARD_HEIGHT - height <= i && n != NULL && n->row[j]) {
+                printf("[]");
+                n = n->next;
+            } else if (p.x == j && p.y == i)
+                printf("()");
+            else
+                printf("  ");
         }
+        printf("┃\n");
     }
     printf("   ┗━━━━━━━━━━━━━━━━━━━━┛\n");
 }
@@ -207,12 +223,17 @@ int main() {
     board = malloc(sizeof(Node));
     board->next = NULL;
 
+    struct piece curr = {4, 0, 5, 0};
+
     // Game Loop
 
+    draw_board(board, curr);
     while (1) {
         printf("\e[1;1H\e[2J");
-        draw_board(board);
+        draw_board(board, curr);
         usleep(500 * 1000);
+        curr.y = (curr.y + 1) % BOARD_HEIGHT;
+        curr.rotation = (curr.rotation + 1) % 4;
     }
 
     return 0;
