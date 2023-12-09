@@ -1,18 +1,17 @@
 # Tetris in C
 
-This project was purely made for me to learn some C, I don't expect anyone to
-use this.
+This project was made purely for me to learn C. Expect bugs, spagetti code and
+just all around badness.
 
 # Todo
 
 - [ ] Come up with a name
 - [ ] Board
     - [ ] Draw using ncurses
-- [ ] Handle pieces
-    - [ ] Define
-    - [ ] Spawn
-        - [ ] Add 7-bag and draw queue
-    - [ ] Draw (probably with ncurses)
+- [o] Handle pieces
+    - [X] Define
+    - [X] Spawn
+    - [X] Draw (probably with ncurses)
     - [ ] Move
         - [ ] DAS
         - [ ] ARR
@@ -21,6 +20,8 @@ use this.
     - [ ] Lock
         - [ ] Delay
 - [ ] Add hold
+- [X] Add 7-bag
 - [ ] Handle line clearing
+- [ ] Draw queue
 - [ ] Draw ghost piece
 - [ ] Draw key overlay and stats
