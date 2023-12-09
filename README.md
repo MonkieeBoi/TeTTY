@@ -8,7 +8,7 @@ just all around badness.
 - [ ] Come up with a name
 - [ ] Board
     - [ ] Draw using ncurses
-- [o] Handle pieces
+- [ ] Handle pieces
     - [X] Define
     - [X] Spawn
     - [X] Draw (probably with ncurses)
