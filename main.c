@@ -1,8 +1,8 @@
-#include <stdio.h>
+#include <curses.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <time.h>
-#include <ncurses.h>
+#include <locale.h>
 
 #define BOARD_HEIGHT 20
 #define BOARD_WIDTH 10
@@ -144,83 +144,32 @@ const int pieces[7][4][3][2] = {
     },
 };
 
-int count_nodes(Node *n) {
-    int length = 0;
-    while (n != NULL) {
-        length++;
-        n = n->next;
-    }
-    return length;
-}
-
 void draw_board(Node *n, struct piece *p) {
-    int height = count_nodes(n);
-    printf("\n\n");
-    for (int i = 0; i < BOARD_HEIGHT; i++) {
-        printf("%02d ┃", i);
-        for (int j = 0; j < BOARD_WIDTH; j++) {
-            unsigned char found = 0;
-            for (int k = 0; k < 3; k++) {
-                if (p->x + pieces[p->type][p->rotation][k][0] == j &&
-                    p->y - pieces[p->type][p->rotation][k][1] == i) {
-                    printf("[]");
-                    found = 1;
-                    break;
-                }
+    clear();
+    for (int i = BOARD_HEIGHT - 1; i >= 0; i--) {
+        mvprintw(i, 0, "%02d ┃", i);
+        mvprintw(i, 24, "┃");
+        if (n != NULL) {
+            for (int j = 0; j < BOARD_WIDTH; j++) {
+                if (n->row[j])
+                    mvprintw(i, j, "[]");
             }
-            if (found)
-                continue;
-            if (BOARD_HEIGHT - height <= i && n != NULL && n->row[j]) {
-                printf("[]");
-                n = n->next;
-            } else if (p->x == j && p->y == i)
-                printf("()");
-            else
-                printf("  ");
-        }
-        printf("┃\n");
-    }
-    printf("   ┗━━━━━━━━━━━━━━━━━━━━┛\n");
-}
-
-void print_pieces() {
-    for (int i = 0; i < 7; i++) {
-        printf("━━━━━ ");
-        switch (i) {
-            case 1: printf("I"); break;
-            case 2: printf("J"); break;
-            case 3: printf("L"); break;
-            case 4: printf("O"); break;
-            case 5: printf("S"); break;
-            case 6: printf("T"); break;
-            case 7: printf("Z"); break;
-        }
-        printf(" ━━━━━\n");
-
-        for (int j = 0; j < 4; j++) {
-            for (int y = 4; y != -1; y--) {
-                for (int x = 0; x < 5; x++) {
-                    if (x == 2 && y == 2) {
-                        printf("<>");
-                        continue;
-                    }
-                    int found = 0;
-                    for (int k = 0; k < 3; k++) {
-                        if (2 + pieces[i][j][k][0] == x && 2 + pieces[i][j][k][1] == y) {
-                            printf("[]");
-                            found = 1;
-                        }
-                    }
-                    if (!found)
-                        printf("  ");
-                }
-                printf("\n");
-            }
+            n = n->next;
         }
     }
+    mvprintw(8, 30, "type: %d", p->type);
+    mvprintw(9, 30, "x: %d", p->x+4);
+    mvprintw(10, 30, "y: %d", p->y);
+    mvprintw(p->y, 2 * p->x + 4, "<>");
+    for (int k = 0; k < 3; k++) {
+        mvprintw(p->y - pieces[p->type][p->rotation][k][1],
+                 4 + 2 * (p->x + pieces[p->type][p->rotation][k][0]),
+                 "[]");
+    }
+    mvprintw(20, 0, "   ┗━━━━━━━━━━━━━━━━━━━━┛");
 }
 
-void queue_pop(struct piece *p, int queue[], int queue_pos) {
+int queue_pop(struct piece *p, int queue[], int queue_pos) {
     p->type = queue[queue_pos];
     p->x = SPAWN_X;
     p->y = SPAWN_Y;
@@ -239,6 +188,8 @@ void queue_pop(struct piece *p, int queue[], int queue_pos) {
     }
 
     queue[queue_pos] = rand;
+    return (queue_pos + 1) % 7;
+    
 }
 
 void queue_init (int queue[]) {
@@ -264,22 +215,39 @@ int main() {
     struct piece *curr = malloc(sizeof(struct piece));
 
     srandom(time(NULL));
+    setlocale(LC_ALL, "");
 
     int queue[7];
     queue_init(queue);
 
-    int queue_pos = 1;
-    queue_pop(curr, queue, 0);
+    int queue_pos = 0;
+    queue_pos = queue_pop(curr, queue, queue_pos);
+
+    initscr();
+    raw();
+    draw_board(board, curr);
 
     // Game Loop
-
-    draw_board(board, curr);
     while (1) {
-        printf("\e[1;1H\e[2J");
+        int input = getch();
+        if (input == 'q')
+            break;
+        else if (input == 65)
+            curr->y = (curr->y > 0) ? curr->y - 1 : curr->y;
+        else if (input == 66)
+            curr->y = (curr->y < 19) ? curr->y + 1 : curr->y;
+        else if (input == 67)
+            curr->x = (curr->x < 9) ? curr->x + 1 : curr->x;
+        else if (input == 68)
+            curr->x = (curr->x > 0) ? curr->x - 1 : curr->x;
+        else if (input == 110) {
+            queue_pos = queue_pop(curr, queue, queue_pos);
+        }
         draw_board(board, curr);
-        usleep(500 * 1000);
-        curr->y = (curr->y + 1) % BOARD_HEIGHT;
+        mvprintw(11, 30, "input: %d", input);
+        mvprintw(12, 30, "pos: %d", queue_pos);
+        refresh();
     }
-
+    endwin();
     return 0;
 }

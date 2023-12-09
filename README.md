@@ -5,6 +5,7 @@ use this.
 
 # Todo
 
+- [ ] Come up with a name
 - [ ] Board
     - [ ] Draw using ncurses
 - [ ] Handle pieces
@@ -20,4 +21,6 @@ use this.
     - [ ] Lock
         - [ ] Delay
 - [ ] Add hold
+- [ ] Handle line clearing
 - [ ] Draw ghost piece
+- [ ] Draw key overlay and stats
