@@ -152,7 +152,7 @@ void draw_board(Node *n, struct piece *p) {
         if (n != NULL) {
             for (int j = 0; j < BOARD_WIDTH; j++) {
                 if (n->row[j])
-                    mvprintw(i, j, "[]");
+                    mvprintw(i, 2 * j + 4, "[]");
             }
             n = n->next;
         }
@@ -167,6 +167,34 @@ void draw_board(Node *n, struct piece *p) {
                  "[]");
     }
     mvprintw(20, 0, "   ┗━━━━━━━━━━━━━━━━━━━━┛");
+}
+
+void lock(Node *n, struct piece*p) {
+    int locked = 0;
+    for (int i = BOARD_HEIGHT - 1; i >= -2; i--) {
+        for (int j = 0; j < BOARD_WIDTH; j++) {
+            if (i == p->y && j == p->x) {
+                n->row[j] = 1;
+                locked++;
+            }
+            for (int k = 0; k < 3; k++) {
+                if (i == p->y - pieces[p->type][p->rotation][k][1] &&
+                    j == p->x + pieces[p->type][p->rotation][k][0]) {
+                    n->row[j] = 1;
+                    locked++;
+                    break;
+                }
+            }
+        }
+        if (locked == 4)
+            break;
+        if (n->next == NULL) {
+            n->next = malloc(sizeof(Node));
+            for (int i = 0; i < BOARD_WIDTH; i++)
+                n->next->row[i] = 0; 
+        }
+        n = n->next;
+    }
 }
 
 int queue_pop(struct piece *p, int queue[], int queue_pos) {
@@ -225,14 +253,19 @@ int main() {
 
     initscr();
     raw();
+    curs_set(0);
     draw_board(board, curr);
 
     // Game Loop
     while (1) {
         int input = getch();
+        // Just proof of concept stuff
         if (input == 'q')
             break;
-        else if (input == 65)
+        else if (input == 32) {
+            lock(board, curr);
+            queue_pos = queue_pop(curr, queue, queue_pos);
+        } else if (input == 65)
             curr->y = (curr->y > 0) ? curr->y - 1 : curr->y;
         else if (input == 66)
             curr->y = (curr->y < 19) ? curr->y + 1 : curr->y;
@@ -240,6 +273,12 @@ int main() {
             curr->x = (curr->x < 9) ? curr->x + 1 : curr->x;
         else if (input == 68)
             curr->x = (curr->x > 0) ? curr->x - 1 : curr->x;
+        else if (input == 97)
+            curr->rotation = (curr->rotation + 3) % 4;
+        else if (input == 115)
+            curr->rotation = (curr->rotation + 1) % 4;
+        else if (input == 100)
+            curr->rotation = (curr->rotation + 2) % 4;
         else if (input == 110) {
             queue_pos = queue_pop(curr, queue, queue_pos);
         }
