@@ -19,7 +19,7 @@ just all around badness.
     - [ ] Rotate (SRS)
     - [ ] Lock
         - [ ] Delay
-- [ ] Add hold
+- [X] Add hold
 - [X] Add 7-bag
 - [ ] Handle line clearing
 - [ ] Draw queue

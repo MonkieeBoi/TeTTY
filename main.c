@@ -17,6 +17,7 @@ typedef struct Node {
 struct piece {
     unsigned char x;
     unsigned char y;
+    unsigned char coords[4][2];
     unsigned char type;
     unsigned char rotation;
 };
@@ -24,19 +25,19 @@ struct piece {
 // TODO: figure out better way to store this
 // Defined by offset from the piece center
 // 7 pieces, 4 rotations, 3 coordinate pairs
-const int pieces[7][4][3][2] = {
+const int pieces[7][4][4][2] = {
     // I
     {
-        {{-1, 0}, {1, 0}, {2, 0}},
+        {{-1, 0}, {0, 0}, {1, 0}, {2, 0}},
          // []<>[][]
-        {{0, 1}, {0, -1}, {0, -2}},
+        {{0, -1}, {0, 0}, {0, 1}, {0, 2}},
         // []
         // <>
         // []
         // []
-        {{-2, 0}, {-1, 0}, {1, 0}},
+        {{-2, 0}, {-1, 0}, {0, 0}, {1, 0}},
          // [][]<>[]
-        {{0, 2}, {0, 1}, {0, -1}},
+        {{0, -2}, {0, -1}, {0, 0}, {0, 1}},
         // []
         // []
         // <>
@@ -44,100 +45,100 @@ const int pieces[7][4][3][2] = {
     },
     // J
     {
-        {{-1, 1}, {-1, 0}, {1, 0}},
+        {{-1, -1}, {-1, 0}, {0, 0}, {1, 0}},
          // []
          // []<>[]
-        {{0, 1}, {1, 1}, {0, -1}},
+        {{0, -1}, {1, -1}, {0, 0}, {0, 1}},
          // [][]
          // <>
          // []
-        {{-1, 0}, {1, 0}, {1, -1}},
+        {{-1, 0}, {0, 0}, {1, 0}, {1, 1}},
          // []<>[]
          //     []
-        {{0, 1}, {-1, -1}, {0, -1}},
+        {{0, -1}, {0, 0}, {-1, 1}, {0, 1}},
          //   []
          //   <>
          // [][]
     },
     // L
     {
-        {{1, 1}, {-1, 0}, {1, 0}},
+        {{1, -1}, {-1, 0}, {0, 0}, {1, 0}},
         //     []
         // []<>[]
-        {{0, 1}, {0, -1}, {1, -1}},
+        {{0, -1}, {0, 0}, {0, 1}, {1, 1}},
         // []
         // <>
         // [][]
-        {{-1, 0}, {1, 0}, {-1, -1}},
+        {{-1, 0}, {0, 0}, {1, 0}, {-1, 1}},
         // []<>[]
         // []
-        {{-1, 1}, {0, 1}, {0, -1}},
+        {{-1, -1}, {0, -1}, {0, 0}, {0, 1}},
         // [][]
         //   <>
         //   []
     },
     // O
     {
-        {{0, 1}, {1, 1}, {1, 0}},
+        {{0, -1}, {1, -1}, {0, 0}, {1, 0}},
         // [][]
         // <>[]
-        {{1, 0}, {0, -1}, {1, -1}},
+        {{0, 0}, {1, 0}, {0, 1}, {1, 1}},
         // <>[]
         // [][]
-        {{-1, 0}, {-1, -1}, {0, -1}},
+        {{-1, 0}, {0, 0}, {-1, 1}, {0, 1}},
         // []<>
         // [][]
-        {{-1, 1}, {0, 1}, {-1, 0}}
+        {{-1, -1}, {0, -1}, {-1, 0}, {0, 0}}
         // [][]
         // []<>
     },
     // S
     {
-        {{0, 1}, {1, 1}, {-1, 0}},
+        {{0, -1}, {1, -1}, {-1, 0}, {0, 0}},
         //   [][]
         // []<>
-        {{0, 1}, {1, 0}, {1, -1}},
+        {{0, -1}, {0, 0}, {1, 0}, {1, 1}},
         // []
         // <>[]
         //   []
-        {{1, 0}, {-1, -1}, {0, -1}},
+        {{0, 0}, {1, 0}, {-1, 1}, {0, 1}},
         //   <>[]
         // [][]
-        {{-1, 1}, {-1, 0}, {0, -1}}
+        {{-1, -1}, {-1, 0}, {0, 0}, {0, 1}}
         // []
         // []<>
         //   []
     },
     // T
     {
-        {{0, 1}, {-1, 0}, {1, 0}},
+        {{0, -1}, {-1, 0},{0, 0},  {1, 0}},
         //   []
         // []<>[]
-        {{0, 1}, {1, 0}, {0, -1}},
+        {{0, -1}, {0, 0}, {1, 0}, {0, 1}},
         // []
         // <>[]
         // []
-        {{-1, 0}, {1, 0}, {0, -1}},
+        {{-1, 0}, {0, 0}, {1, 0}, {0, 1}},
         // []<>[]
         //   []
-        {{0, 1}, {-1, 0}, {0, -1}}
+        {{0, -1}, {-1, 0}, {0, 0}, {0, 1}}
         //   []
         // []<>
         //   []
     },
     // Z
     {
-        {{-1, 1}, {0, 1}, {1, 0}},
+        {{-1, -1}, {0, -1}, {0, 0}, {1, 0}},
         // [][]
         //   <>[]
-        {{1, 1}, {1, 0}, {0, -1}},
+        {{1, -1}, {0, 0}, {1, 0}, {0, 1}},
         //   []
         // <>[]
         // []
-        {{-1, 0}, {0, -1}, {1, -1}},
+        {{-1, 0}, {0, 0}, {0, 1}, {1, 1}},
         // []<>
         //   [][]
-        {{0, 1}, {-1, 0}, {-1, -1}}
+        {{0, -1}, {-1, 0}, {0, 0}, {-1, 1}}
         //   []
         // []<>
         // []
@@ -158,50 +159,65 @@ void draw_board(Node *n, struct piece *p) {
         }
     }
     mvprintw(8, 30, "type: %d", p->type);
-    mvprintw(9, 30, "x: %d", p->x+4);
+    mvprintw(9, 30, "x: %d", p->x);
     mvprintw(10, 30, "y: %d", p->y);
     mvprintw(p->y, 2 * p->x + 4, "<>");
-    for (int k = 0; k < 3; k++) {
-        mvprintw(p->y - pieces[p->type][p->rotation][k][1],
-                 4 + 2 * (p->x + pieces[p->type][p->rotation][k][0]),
-                 "[]");
-    }
+    for (int i = 0; i < 4; i++)
+        mvprintw(p->coords[i][1], 4 + 2 * (p->coords[i][0]), "[]");
+    mvprintw(p->y, 2 * p->x + 4, "<>");
     mvprintw(20, 0, "   ┗━━━━━━━━━━━━━━━━━━━━┛");
 }
 
-void lock(Node *n, struct piece*p) {
-    int locked = 0;
-    for (int i = BOARD_HEIGHT - 1; i >= -2; i--) {
-        for (int j = 0; j < BOARD_WIDTH; j++) {
-            if (i == p->y && j == p->x) {
-                n->row[j] = 1;
-                locked++;
+void lock(Node *n, struct piece *p) {
+    int y = 19;
+    for (int i = 3; i >= 0; i--) {
+        while (y > p->coords[i][1]) {
+            if (n->next == NULL) {
+                n->next = malloc(sizeof(Node));
+                for (int j = 0; j < BOARD_WIDTH; j++)
+                    n->next->row[j] = 0; 
             }
-            for (int k = 0; k < 3; k++) {
-                if (i == p->y - pieces[p->type][p->rotation][k][1] &&
-                    j == p->x + pieces[p->type][p->rotation][k][0]) {
-                    n->row[j] = 1;
-                    locked++;
-                    break;
-                }
-            }
+            n = n->next;
+            y--;
         }
-        if (locked == 4)
-            break;
-        if (n->next == NULL) {
-            n->next = malloc(sizeof(Node));
-            for (int i = 0; i < BOARD_WIDTH; i++)
-                n->next->row[i] = 0; 
-        }
-        n = n->next;
+        n->row[p->coords[i][0]] = 1;
+    }
+}
+
+void move_piece(Node *n, struct piece *p, int x, int y) {
+    p->x += x;
+    p->y += y;
+    for (int i = 0; i < 4; i++) {
+        p->coords[i][0] += x;
+        p->coords[i][1] += y;
+    }
+}
+
+void spin_piece(Node *n, struct piece *p, int spin) {
+    // 0 = cw
+    // 1 = 180
+    // 2 = ccw
+    p->rotation = (p->rotation + spin + 1) % 4;
+    for (int i = 0; i < 4; i++) {
+        p->coords[i][0] = p->x + pieces[p->type][p->rotation][i][0];
+        p->coords[i][1] = p->y + pieces[p->type][p->rotation][i][1];
+    }
+
+}
+
+void gen_piece(struct piece *p, int type) {
+    p->type = type;
+    p->rotation = 0;
+    p->x = 4;
+    p->y = 0;
+    for (int i = 0; i < 4; i++) {
+        p->coords[i][0] = p->x + pieces[type][0][i][0];
+        p->coords[i][1] = p->y + pieces[type][0][i][1];
     }
 }
 
 int queue_pop(struct piece *p, int queue[], int queue_pos) {
-    p->type = queue[queue_pos];
-    p->x = SPAWN_X;
-    p->y = SPAWN_Y;
-    p->rotation = 0;
+    gen_piece(p, queue[queue_pos]);
     int rand = random() % 7;
 
     while (queue_pos != 0) {
@@ -245,6 +261,7 @@ int main() {
     srandom(time(NULL));
     setlocale(LC_ALL, "");
 
+    int hold = -1;
     int queue[7];
     queue_init(queue);
 
@@ -266,21 +283,30 @@ int main() {
             lock(board, curr);
             queue_pos = queue_pop(curr, queue, queue_pos);
         } else if (input == 65)
-            curr->y = (curr->y > 0) ? curr->y - 1 : curr->y;
+            move_piece(board, curr, 0, -1);
         else if (input == 66)
-            curr->y = (curr->y < 19) ? curr->y + 1 : curr->y;
+            move_piece(board, curr, 0, 1);
         else if (input == 67)
-            curr->x = (curr->x < 9) ? curr->x + 1 : curr->x;
+            move_piece(board, curr, 1, 0);
         else if (input == 68)
-            curr->x = (curr->x > 0) ? curr->x - 1 : curr->x;
+            move_piece(board, curr, -1, 0);
         else if (input == 97)
-            curr->rotation = (curr->rotation + 3) % 4;
+            spin_piece(board, curr, 2);
         else if (input == 115)
-            curr->rotation = (curr->rotation + 1) % 4;
+            spin_piece(board, curr, 0);
         else if (input == 100)
-            curr->rotation = (curr->rotation + 2) % 4;
+            spin_piece(board, curr, 1);
         else if (input == 110) {
             queue_pos = queue_pop(curr, queue, queue_pos);
+        } else if (input == 122) {
+            if (hold == -1) {
+                hold = curr->type;
+                queue_pos = queue_pop(curr, queue, queue_pos);
+            } else {
+                int tmp = hold;
+                hold = curr->type;
+                gen_piece(curr, tmp);
+            }
         }
         draw_board(board, curr);
         mvprintw(11, 30, "input: %d", input);
