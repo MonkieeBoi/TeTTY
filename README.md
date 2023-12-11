@@ -6,8 +6,8 @@ just all around badness.
 # Todo
 
 - [ ] Come up with a name
-- [ ] Board
-    - [ ] Draw using ncurses
+- [X] Board
+    - [X] Draw using ncurses
 - [ ] Handle pieces
     - [X] Define
     - [X] Spawn
@@ -21,7 +21,7 @@ just all around badness.
         - [ ] Delay
 - [X] Add hold
 - [X] Add 7-bag
-- [ ] Handle line clearing
-- [ ] Draw queue
+- [X] Handle line clearing
+- [X] Draw queue
 - [ ] Draw ghost piece
 - [ ] Draw key overlay and stats

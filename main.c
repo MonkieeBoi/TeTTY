@@ -1,6 +1,5 @@
 #include <curses.h>
 #include <stdlib.h>
-#include <unistd.h>
 #include <time.h>
 #include <locale.h>
 
@@ -19,7 +18,7 @@ struct piece {
     unsigned char y;
     unsigned char coords[4][2];
     unsigned char type;
-    unsigned char rotation;
+    unsigned char rot;
 };
 
 // TODO: figure out better way to store this
@@ -145,35 +144,63 @@ const int pieces[7][4][4][2] = {
     },
 };
 
-void draw_board(Node *n, struct piece *p) {
+void draw_gui(Node *n, struct piece *p) {
     clear();
     for (int i = BOARD_HEIGHT - 1; i >= 0; i--) {
-        mvprintw(i, 0, "%02d ┃", i);
-        mvprintw(i, 24, "┃");
-        if (n != NULL) {
-            for (int j = 0; j < BOARD_WIDTH; j++) {
-                if (n->row[j])
-                    mvprintw(i, 2 * j + 4, "[]");
-            }
-            n = n->next;
-        }
+        mvprintw(i, 10, "┃");
+        mvprintw(i, 31, "┃");
     }
-    mvprintw(8, 30, "type: %d", p->type);
-    mvprintw(9, 30, "x: %d", p->x);
-    mvprintw(10, 30, "y: %d", p->y);
-    mvprintw(p->y, 2 * p->x + 4, "<>");
-    for (int i = 0; i < 4; i++)
-        mvprintw(p->coords[i][1], 4 + 2 * (p->coords[i][0]), "[]");
-    mvprintw(p->y, 2 * p->x + 4, "<>");
-    mvprintw(20, 0, "   ┗━━━━━━━━━━━━━━━━━━━━┛");
+    mvprintw(20, 10, "┗━━━━━━━━━━━━━━━━━━━━┛");
 }
 
-void lock(Node *n, struct piece *p) {
-    int y = 19;
+void draw_piece(WINDOW *w, int x, int y, int type, int rot) {
+    for (int i = 0; i < 4; i++)
+        mvwprintw(w,
+                  y + pieces[type][rot][i][1],
+                  2 * (x + pieces[type][rot][i][0]),
+                  "[]"
+        );
+}
+
+void draw_board(WINDOW *w, Node *n, struct piece *p) {
+    wclear(w);
+    int y = BOARD_HEIGHT - 1;
+    while (n != NULL) {
+        for (int i = 0; i < BOARD_WIDTH; i++) {
+            if (n->row[i])
+                mvwprintw(w, y, 2 * i, "[]");
+        }
+        n = n->next;
+        y--;
+    }
+    draw_piece(w, p->x, p->y, p->type, p->rot);
+    mvwprintw(w, p->y, 2 * p->x, "<>");
+    wrefresh(w);
+}
+
+void draw_queue(WINDOW *w, int queue[], int queue_pos) {
+    wclear(w);
+    for (int i = 0; i < 5; i++) {
+        draw_piece(w, 1, 2 + 3 * i, queue[queue_pos], 0);
+        queue_pos = (queue_pos + 1) % 7;
+    }
+    wrefresh(w);
+}
+
+void draw_hold(WINDOW *w, int p) {
+    wclear(w);
+    if (p != -1)
+        draw_piece(w, 1, 1, p, 0);
+    wrefresh(w);
+}
+
+void lock_piece(Node *n, struct piece *p) {
+    int y = BOARD_HEIGHT - 1;
     for (int i = 3; i >= 0; i--) {
         while (y > p->coords[i][1]) {
             if (n->next == NULL) {
                 n->next = malloc(sizeof(Node));
+                n->next->next = NULL;
                 for (int j = 0; j < BOARD_WIDTH; j++)
                     n->next->row[j] = 0; 
             }
@@ -197,17 +224,17 @@ void spin_piece(Node *n, struct piece *p, int spin) {
     // 0 = cw
     // 1 = 180
     // 2 = ccw
-    p->rotation = (p->rotation + spin + 1) % 4;
+    p->rot = (p->rot + spin + 1) % 4;
     for (int i = 0; i < 4; i++) {
-        p->coords[i][0] = p->x + pieces[p->type][p->rotation][i][0];
-        p->coords[i][1] = p->y + pieces[p->type][p->rotation][i][1];
+        p->coords[i][0] = p->x + pieces[p->type][p->rot][i][0];
+        p->coords[i][1] = p->y + pieces[p->type][p->rot][i][1];
     }
 
 }
 
 void gen_piece(struct piece *p, int type) {
     p->type = type;
-    p->rotation = 0;
+    p->rot = 0;
     p->x = 4;
     p->y = 0;
     for (int i = 0; i < 4; i++) {
@@ -253,13 +280,83 @@ void queue_init (int queue[]) {
     }
 }
 
+void clear_lines(Node *n) {
+    Node *head = n;
+    int head_full = 1;
+    n = n->next;
+
+    // Check head
+    for (int i = 0; i < BOARD_WIDTH && head_full; i++)
+        if (head->row[i] == 0)
+            head_full = 0;
+
+    // Set head to next non-full row
+    while (head_full && n != NULL) {
+        int full = 1;
+        for (int i = 0; full && i < BOARD_WIDTH; i++)
+            if (n->row[i] == 0)
+                full = 0;
+        for (int i = 0; !full && i < BOARD_WIDTH; i++)
+            head->row[i] = n->row[i];
+        if (!full) {
+            head_full = 0;
+            head->next = n->next;
+        }
+        Node *tmp = n;
+        n = n->next;
+        free(tmp);
+    }
+
+    // Whole board full
+    if (head_full) {
+        for (int i = 0; i < BOARD_WIDTH; i++)
+            head->row[i] = 0;
+        head->next = NULL;
+    }
+
+    // Last non-full row
+    Node *last = head;
+    while (n != NULL) {
+        int full = 1;
+        for (int i = 0; full && i < BOARD_WIDTH; i++)
+            if (n->row[i] == 0)
+                full = 0;
+        if (full) {
+            Node *tmp = n;
+            n = n->next;
+            free(tmp);
+        } else {
+            last->next = n;
+            last = n;
+            n = n->next;
+        }
+    }
+    last->next = NULL;
+}
+
 int main() {
+    srandom(time(NULL));
+    setlocale(LC_ALL, "");
+
+    initscr();
+    cbreak();
+    curs_set(0);
+
+    WINDOW *board_win;
+    board_win = newwin(BOARD_HEIGHT, BOARD_WIDTH * 2, 0, 11);
+
+    WINDOW *queue_win;
+    queue_win = newwin(15, 4 * 2, 0, 33);
+
+    WINDOW *hold_win;
+    hold_win = newwin(2, 4 * 2, 1, 1);
+
     Node *board = malloc(sizeof(Node));
     board->next = NULL;
     struct piece *curr = malloc(sizeof(struct piece));
 
-    srandom(time(NULL));
-    setlocale(LC_ALL, "");
+    for (int i = 0; i < BOARD_WIDTH; i++)
+        board->row[i] = 0;
 
     int hold = -1;
     int queue[7];
@@ -268,19 +365,19 @@ int main() {
     int queue_pos = 0;
     queue_pos = queue_pop(curr, queue, queue_pos);
 
-    initscr();
-    raw();
-    curs_set(0);
-    draw_board(board, curr);
+    draw_gui(board, curr);
+    refresh();
+    draw_board(board_win, board, curr);
+    draw_queue(queue_win, queue, queue_pos);
 
     // Game Loop
     while (1) {
-        int input = getch();
+        int input = wgetch(board_win);
         // Just proof of concept stuff
         if (input == 'q')
             break;
         else if (input == 32) {
-            lock(board, curr);
+            lock_piece(board, curr);
             queue_pos = queue_pop(curr, queue, queue_pos);
         } else if (input == 65)
             move_piece(board, curr, 0, -1);
@@ -308,10 +405,10 @@ int main() {
                 gen_piece(curr, tmp);
             }
         }
-        draw_board(board, curr);
-        mvprintw(11, 30, "input: %d", input);
-        mvprintw(12, 30, "pos: %d", queue_pos);
-        refresh();
+        clear_lines(board);
+        draw_board(board_win, board, curr);
+        draw_queue(queue_win, queue, queue_pos);
+        draw_hold(hold_win, hold);
     }
     endwin();
     return 0;
