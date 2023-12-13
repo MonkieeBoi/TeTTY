@@ -159,6 +159,52 @@ const int pieces[7][4][4][2] = {
     },
 };
 
+// 3 offset 'classes', 4 rotation states, 5 x & y offsets
+int offsets[3][4][5][2] = {
+    // J, L, S, T, Z
+    {
+        // Spawn
+        {{ 0, 0}, { 0, 0}, { 0, 0}, { 0, 0}, { 0, 0}},
+        // CW
+        {{ 0, 0}, { 1, 0}, { 1,-1}, { 0, 2}, { 1, 2}},
+        // 180
+        {{ 0, 0}, { 0, 0}, { 0, 0}, { 0, 0}, { 0, 0}},
+        // CCW
+        {{ 0, 0}, {-1, 0}, {-1,-1}, { 0, 2}, {-1, 2}},
+    },
+    // I
+    {
+        // Spawn
+        {{ 0, 0}, {-1, 0}, { 2, 0}, {-1, 0}, { 2, 0}},
+        // CW
+        {{-1, 0}, { 0, 0}, { 0, 0}, { 0, 1}, { 0,-2}},
+        // 180
+        {{-1, 1}, { 1, 1}, {-2, 1}, { 1, 0}, {-2, 0}},
+        // CCW
+        {{ 0, 1}, { 0, 1}, { 0, 1}, { 0,-1}, { 0, 2}},
+    },
+    // O
+    {
+        // Spawn
+        {{ 0, 0}},
+        // CW
+        {{ 0,-1}},
+        // 180
+        {{-1,-1}},
+        // CCW
+        {{-1, 0}},
+    },
+};
+
+int count_nodes(Node *n) {
+    int length = 0;
+    while (n != NULL) {
+        n = n->next;
+        length++;
+    }
+    return length;
+}
+
 void draw_gui(Node *n, struct piece *p, int x, int y) {
     // clear();
     for (int i = BOARD_HEIGHT - 1; i >= 0; i--) {
@@ -239,7 +285,53 @@ void spin_piece(Node *n, struct piece *p, int spin) {
     // 0 = cw
     // 1 = 180
     // 2 = ccw
+    int init_rot = p->rot;
+    int class = 0;
+    if (p->type == 0) class = 1;
+    if (p->type == 3) class = 2;
     p->rot = (p->rot + spin + 1) % 4;
+
+    int height = count_nodes(n);
+    int board[height][BOARD_WIDTH];
+    for (int i = 0; n != NULL; i++) {
+        for (int j = 0; j < BOARD_WIDTH; j++)
+            board[i][j] = n->row[j];
+        n = n->next;
+    }
+
+    int collision = 0;
+    for (int i = 0; i < 5; i++) {
+        int x = p->x;
+        int y = p->y;
+
+        x += offsets[class][init_rot][i][0] - offsets[class][p->rot][i][0];
+        y -= offsets[class][init_rot][i][1] - offsets[class][p->rot][i][1];
+
+        collision = 0;
+
+        for (int j = 0; j < 4 && !collision; j++) {
+            int minoY = y + pieces[p->type][p->rot][j][1];
+            int minoX = x + pieces[p->type][p->rot][j][0];
+            if (minoY >= BOARD_HEIGHT
+                || minoX >= BOARD_WIDTH
+                || minoX < 0
+                || (BOARD_HEIGHT - 1 - minoY < height
+                    && board[BOARD_HEIGHT - 1 - minoY][minoX])) {
+                collision = 1;
+                break;
+            }
+        }
+        if (!collision) {
+            p->x = x;
+            p->y = y;
+            break;
+        }
+    }
+    if (collision) {
+        p->rot = init_rot;
+        return;
+    }
+
     for (int i = 0; i < 4; i++) {
         p->coords[i][0] = p->x + pieces[p->type][p->rot][i][0];
         p->coords[i][1] = p->y + pieces[p->type][p->rot][i][1];

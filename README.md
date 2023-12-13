@@ -16,7 +16,7 @@ just all around badness.
         - [ ] DAS
         - [ ] ARR
         - [ ] Gravity
-    - [ ] Rotate (SRS)
+    - [X] Rotate (SRS)
     - [ ] Lock
         - [ ] Delay
 - [X] Add hold
