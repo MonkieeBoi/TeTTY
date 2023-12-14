@@ -21,7 +21,7 @@ just all around badness.
     - [ ] Lock
         - [ ] Delay
 - [X] Add hold
-- [ ] Add 7-bag
+- [X] Add 7-bag
 - [X] Handle line clearing
 - [X] Draw queue
 - [ ] Draw ghost piece

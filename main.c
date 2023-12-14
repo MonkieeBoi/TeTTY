@@ -389,7 +389,7 @@ void gen_piece(struct piece *p, int type) {
 int queue_pop(struct piece *p, int queue[], int queue_pos) {
     gen_piece(p, queue[queue_pos]);
     int rand = random() % 7;
-
+// 1 2 3 # 5 6 7
     while (queue_pos != 0) {
         int dup = 0;
         rand = random() % 7;
@@ -489,6 +489,15 @@ void get_inputs(WINDOW *w, int inputs[]) {
     }
 }
 
+void free_nodes(Node *n) {
+    Node *last;
+    while (n != NULL) {
+        last = n;
+        n = n->next;
+        free(last);
+    }
+}
+
 int main() {
     srandom(time(NULL));
     setlocale(LC_ALL, "");
@@ -575,6 +584,7 @@ int main() {
             }
         }
         if (inputs[8]) {
+            free_nodes(board);
             board = malloc(sizeof(Node));
             board->next = NULL;
             curr = malloc(sizeof(struct piece));
@@ -582,7 +592,7 @@ int main() {
                 board->row[i] = 0;
             hold = -1;
             queue_init(queue);
-            queue_pos = queue_pop(curr, queue, queue_pos);
+            queue_pos = queue_pop(curr, queue, 0);
         }
         if (inputs[9])
             break;
