@@ -215,12 +215,15 @@ void draw_gui(Node *n, struct piece *p, int x, int y) {
 }
 
 void draw_piece(WINDOW *w, int x, int y, int type, int rot) {
-    for (int i = 0; i < 4; i++)
+    for (int i = 0; i < 4; i++) {
+        wattron(w, COLOR_PAIR(type + 1));
         mvwprintw(w,
                   y + pieces[type][rot][i][1],
                   2 * (x + pieces[type][rot][i][0]),
                   "[]"
         );
+        wattroff(w, COLOR_PAIR(type + 1));
+    }
 }
 
 void draw_board(WINDOW *w, Node *n, struct piece *p) {
@@ -228,8 +231,11 @@ void draw_board(WINDOW *w, Node *n, struct piece *p) {
     int y = BOARD_HEIGHT - 1;
     while (n != NULL) {
         for (int i = 0; i < BOARD_WIDTH; i++) {
-            if (n->row[i])
+            if (n->row[i]) {
+                wattron(w, COLOR_PAIR(n->row[i]));
                 mvwprintw(w, y, 2 * i, "[]");
+                wattroff(w, COLOR_PAIR(n->row[i]));
+            }
         }
         n = n->next;
         y--;
@@ -268,16 +274,49 @@ void lock_piece(Node *n, struct piece *p) {
             n = n->next;
             y--;
         }
-        n->row[p->coords[i][0]] = 1;
+        n->row[p->coords[i][0]] = p->type + 1;
     }
 }
 
-void move_piece(Node *n, struct piece *p, int x, int y) {
-    p->x += x;
-    p->y += y;
-    for (int i = 0; i < 4; i++) {
-        p->coords[i][0] += x;
-        p->coords[i][1] += y;
+void move_piece(Node *n, struct piece *p, int h, int amount) {
+    int height = count_nodes(n);
+
+    int board[height][BOARD_WIDTH];
+    for (int i = 0; n != NULL; i++) {
+        for (int j = 0; j < BOARD_WIDTH; j++)
+            board[i][j] = n->row[j];
+        n = n->next;
+    }
+
+    int collision = 0;
+
+    // TODO: Add collision checks on the way there
+    for (int i = amount; i; i += (i > 0) ? -1 : 1) {
+        int x = p->x + (h ? i : 0);
+        int y = p->y + (h ? 0 : i);
+
+        collision = 0;
+
+        for (int j = 0; j < 4 && !collision; j++) {
+            int minoY = y + pieces[p->type][p->rot][j][1];
+            int minoX = x + pieces[p->type][p->rot][j][0];
+            collision =  (minoY >= BOARD_HEIGHT
+                          || minoX >= BOARD_WIDTH
+                          || minoX < 0
+                          || (BOARD_HEIGHT - 1 - minoY < height
+                              && board[BOARD_HEIGHT - 1 - minoY][minoX]));
+        }
+
+        if (!collision) {
+            p->x = x;
+            p->y = y;
+            break;
+        }
+    }
+
+    for (int i = 0; i < 4 && !collision; i++) {
+        p->coords[i][0] = p->x + pieces[p->type][p->rot][i][0];
+        p->coords[i][1] = p->y + pieces[p->type][p->rot][i][1];
     }
 }
 
@@ -312,14 +351,11 @@ void spin_piece(Node *n, struct piece *p, int spin) {
         for (int j = 0; j < 4 && !collision; j++) {
             int minoY = y + pieces[p->type][p->rot][j][1];
             int minoX = x + pieces[p->type][p->rot][j][0];
-            if (minoY >= BOARD_HEIGHT
-                || minoX >= BOARD_WIDTH
-                || minoX < 0
-                || (BOARD_HEIGHT - 1 - minoY < height
-                    && board[BOARD_HEIGHT - 1 - minoY][minoX])) {
-                collision = 1;
-                break;
-            }
+            collision =  (minoY >= BOARD_HEIGHT
+                          || minoX >= BOARD_WIDTH
+                          || minoX < 0
+                          || (BOARD_HEIGHT - 1 - minoY < height
+                              && board[BOARD_HEIGHT - 1 - minoY][minoX]));
         }
         if (!collision) {
             p->x = x;
@@ -483,6 +519,15 @@ int main() {
     for (int i = 0; i < BOARD_WIDTH; i++)
         board->row[i] = 0;
 
+    start_color();
+    use_default_colors();
+    init_pair(1, COLOR_CYAN,    -1);
+    init_pair(2, COLOR_BLUE,    -1);
+    init_pair(3, COLOR_WHITE,   -1);
+    init_pair(4, COLOR_YELLOW,  -1);
+    init_pair(5, COLOR_GREEN,   -1);
+    init_pair(6, COLOR_MAGENTA, -1);
+    init_pair(7, COLOR_RED,     -1);
     int hold = -1;
     int queue[7];
     queue_init(queue);
@@ -501,12 +546,15 @@ int main() {
         get_inputs(board_win, inputs);
         // Just proof of concept stuff
         if (inputs[0])
-            move_piece(board, curr, -1, 0);
+            move_piece(board, curr, 1, -1);
         if (inputs[1])
-            move_piece(board, curr, 1, 0);
+            move_piece(board, curr, 1, 1);
         if (inputs[2])
             move_piece(board, curr, 0, 1);
         if (inputs[3]) {
+            int init_y = curr->y;
+            for (int i = 0; i < BOARD_HEIGHT - init_y; i++)
+                move_piece(board, curr, 0, 1);
             lock_piece(board, curr);
             queue_pos = queue_pop(curr, queue, queue_pos);
         }
