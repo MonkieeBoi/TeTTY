@@ -205,79 +205,6 @@ int count_nodes(Node *n) {
     return length;
 }
 
-void draw_gui(Node *n, struct piece *p, int x, int y) {
-    // clear();
-    for (int i = BOARD_HEIGHT - 1; i >= 0; i--) {
-        mvprintw(y + i, x + 10, "┃");
-        mvprintw(y + i, x + 31, "┃");
-    }
-    mvprintw(y + 20, x + 10, "┗━━━━━━━━━━━━━━━━━━━━┛");
-}
-
-void draw_piece(WINDOW *w, int x, int y, int type, int rot) {
-    for (int i = 0; i < 4; i++) {
-        wattron(w, COLOR_PAIR(type + 1));
-        mvwprintw(w,
-                  y + pieces[type][rot][i][1],
-                  2 * (x + pieces[type][rot][i][0]),
-                  "[]"
-        );
-        wattroff(w, COLOR_PAIR(type + 1));
-    }
-}
-
-void draw_board(WINDOW *w, Node *n, struct piece *p) {
-    wclear(w);
-    int y = BOARD_HEIGHT - 1;
-    while (n != NULL) {
-        for (int i = 0; i < BOARD_WIDTH; i++) {
-            if (n->row[i]) {
-                wattron(w, COLOR_PAIR(n->row[i]));
-                mvwprintw(w, y, 2 * i, "[]");
-                wattroff(w, COLOR_PAIR(n->row[i]));
-            }
-        }
-        n = n->next;
-        y--;
-    }
-    draw_piece(w, p->x, p->y, p->type, p->rot);
-    mvwprintw(w, p->y, 2 * p->x, "<>");
-    wrefresh(w);
-}
-
-void draw_queue(WINDOW *w, int queue[], int queue_pos) {
-    wclear(w);
-    for (int i = 0; i < 5; i++) {
-        draw_piece(w, 1, 2 + 3 * i, queue[queue_pos], 0);
-        queue_pos = (queue_pos + 1) % 7;
-    }
-    wrefresh(w);
-}
-
-void draw_hold(WINDOW *w, int p) {
-    wclear(w);
-    if (p != -1)
-        draw_piece(w, 1, 1, p, 0);
-    wrefresh(w);
-}
-
-void lock_piece(Node *n, struct piece *p) {
-    int y = BOARD_HEIGHT - 1;
-    for (int i = 3; i >= 0; i--) {
-        while (y > p->coords[i][1]) {
-            if (n->next == NULL) {
-                n->next = malloc(sizeof(Node));
-                n->next->next = NULL;
-                for (int j = 0; j < BOARD_WIDTH; j++)
-                    n->next->row[j] = 0; 
-            }
-            n = n->next;
-            y--;
-        }
-        n->row[p->coords[i][0]] = p->type + 1;
-    }
-}
-
 int check_collide(int board[][10], int height, int x, int y, int type, int rot) {
     for (int i = 0; i < 4; i++) {
         int minoY = y + pieces[type][rot][i][1];
@@ -373,6 +300,84 @@ void spin_piece(Node *n, struct piece *p, int spin) {
         p->coords[i][1] = p->y + pieces[p->type][p->rot][i][1];
     }
 
+}
+
+void draw_gui(Node *n, struct piece *p, int x, int y) {
+    // clear();
+    for (int i = BOARD_HEIGHT - 1; i >= 0; i--) {
+        mvprintw(y + i, x + 10, "┃");
+        mvprintw(y + i, x + 31, "┃");
+    }
+    mvprintw(y + 20, x + 10, "┗━━━━━━━━━━━━━━━━━━━━┛");
+}
+
+void draw_piece(WINDOW *w, int x, int y, int type, int rot, int ghost) {
+    for (int i = 0; i < 4; i++) {
+        wattron(w, COLOR_PAIR(ghost ? 8 : (type + 1)));
+        mvwprintw(w,
+                  y + pieces[type][rot][i][1],
+                  2 * (x + pieces[type][rot][i][0]),
+                  "[]"
+        );
+        wattroff(w, COLOR_PAIR(ghost ? 8 : (type + 1)));
+    }
+}
+
+void draw_board(WINDOW *w, Node *n, struct piece *p) {
+    wclear(w);
+
+    int orig_y = p->y;
+    move_piece(n, p, 0, BOARD_HEIGHT - p->y);
+    draw_piece(w, p->x, p->y, p->type, p->rot, 1);
+    p->y = orig_y;
+
+    int y = BOARD_HEIGHT - 1;
+    while (n != NULL) {
+        for (int i = 0; i < BOARD_WIDTH; i++) {
+            if (n->row[i]) {
+                wattron(w, COLOR_PAIR(n->row[i]));
+                mvwprintw(w, y, 2 * i, "[]");
+                wattroff(w, COLOR_PAIR(n->row[i]));
+            }
+        }
+        n = n->next;
+        y--;
+    }
+    draw_piece(w, p->x, p->y, p->type, p->rot, 0);
+    wrefresh(w);
+}
+
+void draw_queue(WINDOW *w, int queue[], int queue_pos) {
+    wclear(w);
+    for (int i = 0; i < 5; i++) {
+        draw_piece(w, 1, 2 + 3 * i, queue[queue_pos], 0, 0);
+        queue_pos = (queue_pos + 1) % 7;
+    }
+    wrefresh(w);
+}
+
+void draw_hold(WINDOW *w, int p) {
+    wclear(w);
+    if (p != -1)
+        draw_piece(w, 1, 1, p, 0, 0);
+    wrefresh(w);
+}
+
+void lock_piece(Node *n, struct piece *p) {
+    int y = BOARD_HEIGHT - 1;
+    for (int i = 3; i >= 0; i--) {
+        while (y > p->coords[i][1]) {
+            if (n->next == NULL) {
+                n->next = malloc(sizeof(Node));
+                n->next->next = NULL;
+                for (int j = 0; j < BOARD_WIDTH; j++)
+                    n->next->row[j] = 0; 
+            }
+            n = n->next;
+            y--;
+        }
+        n->row[p->coords[i][0]] = p->type + 1;
+    }
 }
 
 void gen_piece(struct piece *p, int type) {
@@ -530,13 +535,14 @@ int main() {
 
     start_color();
     use_default_colors();
-    init_pair(1, COLOR_CYAN,    -1);
-    init_pair(2, COLOR_BLUE,    -1);
-    init_pair(3, COLOR_WHITE,   -1);
-    init_pair(4, COLOR_YELLOW,  -1);
-    init_pair(5, COLOR_GREEN,   -1);
-    init_pair(6, COLOR_MAGENTA, -1);
-    init_pair(7, COLOR_RED,     -1);
+    init_pair(1, COLOR_CYAN,    COLOR_CYAN);
+    init_pair(2, COLOR_BLUE,    COLOR_BLUE);
+    init_pair(3, COLOR_WHITE,   COLOR_WHITE);
+    init_pair(4, COLOR_YELLOW,  COLOR_YELLOW);
+    init_pair(5, COLOR_GREEN,   COLOR_GREEN);
+    init_pair(6, COLOR_MAGENTA, COLOR_MAGENTA);
+    init_pair(7, COLOR_RED,     COLOR_RED);
+    init_pair(8, COLOR_WHITE,   -1);
     int hold = -1;
     int queue[7];
     queue_init(queue);
@@ -598,7 +604,7 @@ int main() {
         draw_board(board_win, board, curr);
         draw_queue(queue_win, queue, queue_pos);
         draw_hold(hold_win, hold);
-        usleep(16 * 1000);
+        usleep(16667);
     }
     endwin();
     return 0;

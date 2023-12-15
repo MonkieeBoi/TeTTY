@@ -17,12 +17,12 @@ just all around badness.
         - [ ] ARR
         - [ ] Gravity
     - [X] Rotate (SRS)
-    - [ ] Harddrop
+    - [X] Harddrop
     - [ ] Lock
         - [ ] Delay
 - [X] Add hold
 - [X] Add 7-bag
 - [X] Handle line clearing
 - [X] Draw queue
-- [ ] Draw ghost piece
+- [X] Draw ghost piece
 - [ ] Draw key overlay and stats
