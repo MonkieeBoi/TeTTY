@@ -278,6 +278,20 @@ void lock_piece(Node *n, struct piece *p) {
     }
 }
 
+int check_collide(int board[][10], int height, int x, int y, int type, int rot) {
+    for (int i = 0; i < 4; i++) {
+        int minoY = y + pieces[type][rot][i][1];
+        int minoX = x + pieces[type][rot][i][0];
+        if (minoY >= BOARD_HEIGHT
+          || minoX >= BOARD_WIDTH
+          || minoX < 0
+          || (BOARD_HEIGHT - 1 - minoY < height
+              && board[BOARD_HEIGHT - 1 - minoY][minoX]))
+            return 1;
+    }
+    return 0;
+}
+
 void move_piece(Node *n, struct piece *p, int h, int amount) {
     int height = count_nodes(n);
 
@@ -289,32 +303,27 @@ void move_piece(Node *n, struct piece *p, int h, int amount) {
     }
 
     int collision = 0;
+    int last_x = p->x;
+    int last_y = p->y;
+    int step = (amount < 0) ? -1 : 1;
 
-    // TODO: Add collision checks on the way there
-    for (int i = amount; i; i += (i > 0) ? -1 : 1) {
+    for (int i = step; i != amount + step; i += step) {
         int x = p->x + (h ? i : 0);
         int y = p->y + (h ? 0 : i);
 
-        collision = 0;
-
-        for (int j = 0; j < 4 && !collision; j++) {
-            int minoY = y + pieces[p->type][p->rot][j][1];
-            int minoX = x + pieces[p->type][p->rot][j][0];
-            collision =  (minoY >= BOARD_HEIGHT
-                          || minoX >= BOARD_WIDTH
-                          || minoX < 0
-                          || (BOARD_HEIGHT - 1 - minoY < height
-                              && board[BOARD_HEIGHT - 1 - minoY][minoX]));
-        }
+        collision = check_collide(board, height, x, y, p->type, p->rot);
 
         if (!collision) {
-            p->x = x;
-            p->y = y;
+            last_x = x;
+            last_y = y;
+        } else
             break;
-        }
     }
 
-    for (int i = 0; i < 4 && !collision; i++) {
+    p->x = last_x;
+    p->y = last_y;
+
+    for (int i = 0; i < 4; i++) {
         p->coords[i][0] = p->x + pieces[p->type][p->rot][i][0];
         p->coords[i][1] = p->y + pieces[p->type][p->rot][i][1];
     }
@@ -346,17 +355,8 @@ void spin_piece(Node *n, struct piece *p, int spin) {
         x += offsets[class][init_rot][i][0] - offsets[class][p->rot][i][0];
         y -= offsets[class][init_rot][i][1] - offsets[class][p->rot][i][1];
 
-        collision = 0;
+        collision = check_collide(board, height, x, y, p->type, p->rot);
 
-        for (int j = 0; j < 4 && !collision; j++) {
-            int minoY = y + pieces[p->type][p->rot][j][1];
-            int minoX = x + pieces[p->type][p->rot][j][0];
-            collision =  (minoY >= BOARD_HEIGHT
-                          || minoX >= BOARD_WIDTH
-                          || minoX < 0
-                          || (BOARD_HEIGHT - 1 - minoY < height
-                              && board[BOARD_HEIGHT - 1 - minoY][minoX]));
-        }
         if (!collision) {
             p->x = x;
             p->y = y;
@@ -389,7 +389,7 @@ void gen_piece(struct piece *p, int type) {
 int queue_pop(struct piece *p, int queue[], int queue_pos) {
     gen_piece(p, queue[queue_pos]);
     int rand = random() % 7;
-// 1 2 3 # 5 6 7
+
     while (queue_pos != 0) {
         int dup = 0;
         rand = random() % 7;
@@ -561,9 +561,7 @@ int main() {
         if (inputs[2])
             move_piece(board, curr, 0, 1);
         if (inputs[3]) {
-            int init_y = curr->y;
-            for (int i = 0; i < BOARD_HEIGHT - init_y; i++)
-                move_piece(board, curr, 0, 1);
+            move_piece(board, curr, 0, BOARD_HEIGHT - curr->y);
             lock_piece(board, curr);
             queue_pos = queue_pop(curr, queue, queue_pos);
         }
