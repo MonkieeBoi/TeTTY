@@ -30,8 +30,8 @@ typedef struct Node {
 
 struct piece {
     unsigned char x;
-    unsigned char y;
-    unsigned char coords[4][2];
+    char y;
+    char coords[4][2];
     unsigned char type;
     unsigned char rot;
 };
@@ -276,11 +276,8 @@ void spin_piece(Node *n, struct piece *p, int spin) {
 
     int collision = 0;
     for (int i = 0; i < 5; i++) {
-        int x = p->x;
-        int y = p->y;
-
-        x += offsets[class][init_rot][i][0] - offsets[class][p->rot][i][0];
-        y -= offsets[class][init_rot][i][1] - offsets[class][p->rot][i][1];
+        int x = p->x + (offsets[class][init_rot][i][0] - offsets[class][p->rot][i][0]);
+        int y = p->y - (offsets[class][init_rot][i][1] - offsets[class][p->rot][i][1]);
 
         collision = check_collide(board, height, x, y, p->type, p->rot);
 
@@ -290,6 +287,7 @@ void spin_piece(Node *n, struct piece *p, int spin) {
             break;
         }
     }
+
     if (collision) {
         p->rot = init_rot;
         return;
@@ -303,7 +301,6 @@ void spin_piece(Node *n, struct piece *p, int spin) {
 }
 
 void draw_gui(Node *n, struct piece *p, int x, int y) {
-    // clear();
     for (int i = BOARD_HEIGHT - 1; i >= 0; i--) {
         mvprintw(y + i, x + 10, "┃");
         mvprintw(y + i, x + 31, "┃");
