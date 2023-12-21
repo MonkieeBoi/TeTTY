@@ -15,7 +15,7 @@ just all around badness.
     - [ ] Move
         - [ ] DAS
         - [ ] ARR
-        - [ ] Gravity
+        - [X] Gravity
     - [X] Rotate (SRS)
     - [X] Harddrop
     - [ ] Lock

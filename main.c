@@ -9,6 +9,7 @@
 #define SPAWN_X 4
 #define SPAWN_Y 0
 #define SPAWN_ROT 0
+#define FPS 60
 
 int keys[10] = {
     68,  // Left  | ←
@@ -196,6 +197,30 @@ int offsets[3][4][5][2] = {
     },
 };
 
+// 180 offset table
+int offsets2[2][4][2][2] = {
+    {
+        // Spawn
+        {{ 0, 0}, { 0, 1}},
+        // CW
+        {{ 0, 0}, { 1, 0}},
+        // 180
+        {{ 0, 0}, { 0, 0}},
+        // CCW
+        {{ 0, 0}, { 0, 0}}
+    },
+    {
+        // Spawn
+        {{ 0, 0}, { 1, 0}},
+        // CW
+        {{-1, 0}, { 0, 0}},
+        // 180
+        {{-1, 1}, { 0, 0}},
+        // CCW
+        {{ 0, 1}, { 0, 1}},
+    }
+};
+
 int count_nodes(Node *n) {
     int length = 0;
     while (n != NULL) {
@@ -278,6 +303,13 @@ void spin_piece(Node *n, struct piece *p, int spin) {
     for (int i = 0; i < 5; i++) {
         int x = p->x + (offsets[class][init_rot][i][0] - offsets[class][p->rot][i][0]);
         int y = p->y - (offsets[class][init_rot][i][1] - offsets[class][p->rot][i][1]);
+
+        if (class != 2 && spin == 1) {
+            x = p->x + (offsets2[class][init_rot][i][0] - offsets2[class][p->rot][i][0]);
+            y = p->y - (offsets2[class][init_rot][i][1] - offsets2[class][p->rot][i][1]);
+            if (i > 2)
+                break;
+        }
 
         collision = check_collide(board, height, x, y, p->type, p->rot);
 
@@ -507,6 +539,17 @@ int main() {
     initscr();
     cbreak();
     curs_set(0);
+    start_color();
+    use_default_colors();
+
+    init_pair(1, COLOR_CYAN,    COLOR_CYAN);
+    init_pair(2, COLOR_BLUE,    COLOR_BLUE);
+    init_pair(3, COLOR_WHITE,   COLOR_WHITE);
+    init_pair(4, COLOR_YELLOW,  COLOR_YELLOW);
+    init_pair(5, COLOR_GREEN,   COLOR_GREEN);
+    init_pair(6, COLOR_MAGENTA, COLOR_MAGENTA);
+    init_pair(7, COLOR_RED,     COLOR_RED);
+    init_pair(8, COLOR_WHITE,   -1);
 
     int width = 44;
     int height = 21;
@@ -530,28 +573,20 @@ int main() {
     for (int i = 0; i < BOARD_WIDTH; i++)
         board->row[i] = 0;
 
-    start_color();
-    use_default_colors();
-    init_pair(1, COLOR_CYAN,    COLOR_CYAN);
-    init_pair(2, COLOR_BLUE,    COLOR_BLUE);
-    init_pair(3, COLOR_WHITE,   COLOR_WHITE);
-    init_pair(4, COLOR_YELLOW,  COLOR_YELLOW);
-    init_pair(5, COLOR_GREEN,   COLOR_GREEN);
-    init_pair(6, COLOR_MAGENTA, COLOR_MAGENTA);
-    init_pair(7, COLOR_RED,     COLOR_RED);
-    init_pair(8, COLOR_WHITE,   -1);
     int hold = -1;
+    int hold_used = 0;
     int queue[7];
     queue_init(queue);
-
-    int queue_pos = 0;
-    queue_pos = queue_pop(curr, queue, queue_pos);
+    int queue_pos = queue_pop(curr, queue, 0);
+    int inputs[10];
+    
+    float grav = 0.02;
+    float grav_c = 0;
 
     draw_gui(board, curr, offset_x, offset_y);
     refresh();
     draw_board(board_win, board, curr);
     draw_queue(queue_win, queue, queue_pos);
-    int inputs[10];
 
     // Game Loop
     while (1) {
@@ -567,6 +602,8 @@ int main() {
             move_piece(board, curr, 0, BOARD_HEIGHT - curr->y);
             lock_piece(board, curr);
             queue_pos = queue_pop(curr, queue, queue_pos);
+            hold_used = 0;
+            grav_c = 0;
         }
         if (inputs[4])
             spin_piece(board, curr, 2);
@@ -578,11 +615,13 @@ int main() {
             if (hold == -1) {
                 hold = curr->type;
                 queue_pos = queue_pop(curr, queue, queue_pos);
-            } else {
+            } else if (!hold_used) {
                 int tmp = hold;
                 hold = curr->type;
                 gen_piece(curr, tmp);
             }
+            hold_used = 1;
+            grav_c = 0;
         }
         if (inputs[8]) {
             free_nodes(board);
@@ -594,14 +633,24 @@ int main() {
             hold = -1;
             queue_init(queue);
             queue_pos = queue_pop(curr, queue, 0);
+            grav_c = 0;
         }
         if (inputs[9])
             break;
+
         clear_lines(board);
+
+        // Updates
         draw_board(board_win, board, curr);
         draw_queue(queue_win, queue, queue_pos);
         draw_hold(hold_win, hold);
-        usleep(16667);
+
+        // Gravity Movement
+        grav_c += grav;
+        move_piece(board, curr, 0, (int) grav_c);
+        grav_c = grav_c - (int) grav_c;
+
+        usleep(1000000 / FPS);
     }
     endwin();
     return 0;
