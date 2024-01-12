@@ -44,14 +44,14 @@ const int pieces[7][4][4][2] = {
     // I
     {
         {{-1, 0}, {0, 0}, {1, 0}, {2, 0}},
-         // []<>[][]
+        // []<>[][]
         {{0, -1}, {0, 0}, {0, 1}, {0, 2}},
         // []
         // <>
         // []
         // []
         {{-2, 0}, {-1, 0}, {0, 0}, {1, 0}},
-         // [][]<>[]
+        // [][]<>[]
         {{0, -2}, {0, -1}, {0, 0}, {0, 1}},
         // []
         // []
@@ -211,11 +211,11 @@ int offsets2[2][4][2][2] = {
     },
     {
         // Spawn
-        {{ 0, 0}, { 1, 0}},
+        {{ 1, 0}, { 1, 0}},
         // CW
         {{-1, 0}, { 0, 0}},
         // 180
-        {{-1, 1}, { 0, 0}},
+        {{ 0, 1}, { 0, 0}},
         // CCW
         {{ 0, 1}, { 0, 1}},
     }
@@ -334,10 +334,10 @@ void spin_piece(Node *n, struct piece *p, int spin) {
 
 void draw_gui(Node *n, struct piece *p, int x, int y) {
     for (int i = BOARD_HEIGHT - 1; i >= 0; i--) {
-        mvprintw(y + i, x + 10, "┃");
-        mvprintw(y + i, x + 31, "┃");
+        mvprintw(y + i, x + 10, "│");
+        mvprintw(y + i, x + 31, "│");
     }
-    mvprintw(y + 20, x + 10, "┗━━━━━━━━━━━━━━━━━━━━┛");
+    mvprintw(y + 20, x + 10, "└────────────────────┘");
 }
 
 void draw_piece(WINDOW *w, int x, int y, int type, int rot, int ghost) {
@@ -353,7 +353,7 @@ void draw_piece(WINDOW *w, int x, int y, int type, int rot, int ghost) {
 }
 
 void draw_board(WINDOW *w, Node *n, struct piece *p) {
-    wclear(w);
+    werase(w);
 
     int orig_y = p->y;
     move_piece(n, p, 0, BOARD_HEIGHT - p->y);
@@ -377,7 +377,7 @@ void draw_board(WINDOW *w, Node *n, struct piece *p) {
 }
 
 void draw_queue(WINDOW *w, int queue[], int queue_pos) {
-    wclear(w);
+    werase(w);
     for (int i = 0; i < 5; i++) {
         draw_piece(w, 1, 2 + 3 * i, queue[queue_pos], 0, 0);
         queue_pos = (queue_pos + 1) % 7;
@@ -386,7 +386,7 @@ void draw_queue(WINDOW *w, int queue[], int queue_pos) {
 }
 
 void draw_hold(WINDOW *w, int p) {
-    wclear(w);
+    werase(w);
     if (p != -1)
         draw_piece(w, 1, 1, p, 0, 0);
     wrefresh(w);
