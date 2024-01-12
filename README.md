@@ -1,11 +1,11 @@
-# Tetris in C
+# TeTTY
 
-This project was made purely for me to learn C. Expect bugs, spagetti code and
-just all around badness.
+Yet another tui Tetris clone. This one however aims to follow guideline Tetris,
+meaning SRS, hold, harddrop and all that good stuff.
 
 # Todo
 
-- [ ] Come up with a name
+- [X] Come up with a name
 - [X] Board
     - [X] Draw using ncurses
 - [ ] Handle pieces
