@@ -334,10 +334,10 @@ void spin_piece(Node *n, struct piece *p, int spin) {
 
 void draw_gui(Node *n, struct piece *p, int x, int y) {
     for (int i = BOARD_HEIGHT - 1; i >= 0; i--) {
-        mvprintw(y + i, x + 10, "│");
-        mvprintw(y + i, x + 31, "│");
+        mvprintw(y + i, x, "│");
+        mvprintw(y + i, x + 21, "│");
     }
-    mvprintw(y + 20, x + 10, "└────────────────────┘");
+    mvprintw(y + 20, x, "└────────────────────┘");
 }
 
 void draw_piece(WINDOW *w, int x, int y, int type, int rot, int ghost) {
@@ -389,6 +389,39 @@ void draw_hold(WINDOW *w, int p) {
     werase(w);
     if (p != -1)
         draw_piece(w, 1, 1, p, 0, 0);
+    wrefresh(w);
+}
+
+void draw_keys(WINDOW *w, int inputs[]) {
+    werase(w);
+
+    mvwprintw(w, 0, 0, "    ┌───┬───┬───┐                   ");
+    mvwprintw(w, 1, 0, "    │ ( │ ) │ / │                   ");
+    mvwprintw(w, 2, 0, "┌───┼───┴───┴───┘                   ");
+    mvwprintw(w, 3, 0, "│ ~ │                               ");
+    mvwprintw(w, 4, 0, "└───┘           ┌───┐  ┌───┬───┬───┐");
+    mvwprintw(w, 5, 0, "                │ V │  │ < │ v │ > │");
+    mvwprintw(w, 6, 0, "                └───┘  └───┴───┴───┘");
+    wattron(w, COLOR_PAIR(3));
+
+    if (inputs[0])
+        mvwprintw(w, 5, 24, "   ");
+    if (inputs[1])
+        mvwprintw(w, 5, 32, "   ");
+    if (inputs[2])
+        mvwprintw(w, 5, 28, "   ");
+    if (inputs[3])
+        mvwprintw(w, 5, 17, "   ");
+    if (inputs[4])
+        mvwprintw(w, 1, 5, "   ");
+    if (inputs[5])
+        mvwprintw(w, 1, 9, "   ");
+    if (inputs[6])
+        mvwprintw(w, 1, 13, "   ");
+    if (inputs[7])
+        mvwprintw(w, 3, 1, "   ");
+
+    wattroff(w, COLOR_PAIR(3));
     wrefresh(w);
 }
 
@@ -551,10 +584,19 @@ int main() {
     init_pair(7, COLOR_RED,     COLOR_RED);
     init_pair(8, COLOR_WHITE,   -1);
 
+    if (COLS < 74 || LINES < 21) {
+        endwin();
+        printf("Screen too small\n");
+        return 1;
+    }
+
     int width = 44;
     int height = 21;
     int offset_x = (COLS - width) / 2;
     int offset_y = (LINES - height) / 2;
+
+    if (offset_x < 32)
+        offset_x = 32;
 
     WINDOW *board_win;
     board_win = newwin(BOARD_HEIGHT, BOARD_WIDTH * 2, offset_y, offset_x + 11);
@@ -565,6 +607,9 @@ int main() {
 
     WINDOW *hold_win;
     hold_win = newwin(2, 4 * 2, offset_y + 1, offset_x + 1);
+
+    WINDOW *key_win;
+    key_win = newwin(7, 36, offset_y + 3, offset_x - 32);
 
     Node *board = malloc(sizeof(Node));
     board->next = NULL;
@@ -583,10 +628,8 @@ int main() {
     float grav = 0.02;
     float grav_c = 0;
 
-    draw_gui(board, curr, offset_x, offset_y);
+    draw_gui(board, curr, offset_x + 10, offset_y);
     refresh();
-    draw_board(board_win, board, curr);
-    draw_queue(queue_win, queue, queue_pos);
 
     // Game Loop
     while (1) {
@@ -644,6 +687,7 @@ int main() {
         draw_board(board_win, board, curr);
         draw_queue(queue_win, queue, queue_pos);
         draw_hold(hold_win, hold);
+        draw_keys(key_win, inputs);
 
         // Gravity Movement
         grav_c += grav;
