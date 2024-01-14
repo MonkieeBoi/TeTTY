@@ -398,9 +398,9 @@ void draw_keys(WINDOW *w, int inputs[]) {
     mvwprintw(w, 0, 0, "    ┌───┬───┬───┐                   ");
     mvwprintw(w, 1, 0, "    │ ( │ ) │ / │                   ");
     mvwprintw(w, 2, 0, "┌───┼───┴───┴───┘                   ");
-    mvwprintw(w, 3, 0, "│ ~ │                               ");
+    mvwprintw(w, 3, 0, "│ ↕ │                               ");
     mvwprintw(w, 4, 0, "└───┘           ┌───┐  ┌───┬───┬───┐");
-    mvwprintw(w, 5, 0, "                │ V │  │ < │ v │ > │");
+    mvwprintw(w, 5, 0, "                │ ▼ │  │ ← │ ↓ │ → │");
     mvwprintw(w, 6, 0, "                └───┘  └───┴───┴───┘");
     wattron(w, COLOR_PAIR(3));
 
