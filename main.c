@@ -335,9 +335,9 @@ void spin_piece(Node *n, struct piece *p, int spin) {
 void draw_gui(Node *n, struct piece *p, int x, int y) {
     for (int i = BOARD_HEIGHT - 1; i >= 0; i--) {
         mvprintw(y + i, x, "│");
-        mvprintw(y + i, x + 21, "│");
+        mvprintw(y + i, x + 1 + BOARD_WIDTH * 2, "│");
     }
-    mvprintw(y + 20, x, "└────────────────────┘");
+    mvprintw(y + BOARD_HEIGHT, x, "└────────────────────┘");
 }
 
 void draw_piece(WINDOW *w, int x, int y, int type, int rot, int ghost) {
@@ -484,16 +484,13 @@ int queue_pop(struct piece *p, int queue[], int queue_pos) {
     gen_piece(p, queue[queue_pos]);
     int rand = random() % 7;
 
-    while (queue_pos != 0) {
-        int dup = 0;
-        rand = random() % 7;
-        for (int i = 0; i < queue_pos; i++) {
-            if (rand == queue[i])
-                dup = 1;
-        }
-        if (!dup)
-            break;
+    int used[7] = {0, 0, 0, 0, 0, 0, 0};
+    for (int i = 0; i < queue_pos; i++) {
+        used[queue[i]] = 1;
     }
+
+    while (used[rand] && queue_pos != 0)
+        rand = random() % 7;
 
     queue[queue_pos] = rand;
     return (queue_pos + 1) % 7;
