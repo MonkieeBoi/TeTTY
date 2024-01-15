@@ -29,13 +29,13 @@ typedef struct Node {
     struct Node *next;
 } Node;
 
-struct piece {
+typedef struct Piece {
     unsigned char x;
     char y;
     char coords[4][2];
     unsigned char type;
     unsigned char rot;
-};
+} Piece;
 
 // TODO: figure out better way to store this
 // Defined by offset from the piece center
@@ -244,7 +244,7 @@ int check_collide(int board[][10], int height, int x, int y, int type, int rot) 
     return 0;
 }
 
-void move_piece(Node *n, struct piece *p, int h, int amount) {
+void move_piece(Node *n, Piece *p, int h, int amount) {
     int height = count_nodes(n);
 
     int board[height][BOARD_WIDTH];
@@ -281,7 +281,7 @@ void move_piece(Node *n, struct piece *p, int h, int amount) {
     }
 }
 
-void spin_piece(Node *n, struct piece *p, int spin) {
+void spin_piece(Node *n, Piece *p, int spin) {
     // 0 = cw
     // 1 = 180
     // 2 = ccw
@@ -332,7 +332,7 @@ void spin_piece(Node *n, struct piece *p, int spin) {
 
 }
 
-void draw_gui(Node *n, struct piece *p, int x, int y) {
+void draw_gui(Node *n, Piece *p, int x, int y) {
     for (int i = BOARD_HEIGHT - 1; i >= 0; i--) {
         mvprintw(y + i, x, "│");
         mvprintw(y + i, x + 1 + BOARD_WIDTH * 2, "│");
@@ -352,7 +352,7 @@ void draw_piece(WINDOW *w, int x, int y, int type, int rot, int ghost) {
     }
 }
 
-void draw_board(WINDOW *w, Node *n, struct piece *p) {
+void draw_board(WINDOW *w, Node *n, Piece *p) {
     werase(w);
 
     int orig_y = p->y;
@@ -452,7 +452,7 @@ void draw_keys(WINDOW *w, int inputs[]) {
     wrefresh(w);
 }
 
-void lock_piece(Node *n, struct piece *p) {
+void lock_piece(Node *n, Piece *p) {
     int y = BOARD_HEIGHT - 1;
     for (int i = 3; i >= 0; i--) {
         while (y > p->coords[i][1]) {
@@ -469,7 +469,7 @@ void lock_piece(Node *n, struct piece *p) {
     }
 }
 
-void gen_piece(struct piece *p, int type) {
+void gen_piece(Piece *p, int type) {
     p->type = type;
     p->rot = SPAWN_ROT;
     p->x = SPAWN_X;
@@ -480,7 +480,7 @@ void gen_piece(struct piece *p, int type) {
     }
 }
 
-int queue_pop(struct piece *p, int queue[], int queue_pos) {
+int queue_pop(Piece *p, int queue[], int queue_pos) {
     gen_piece(p, queue[queue_pos]);
     int rand = random() % 7;
 
@@ -498,19 +498,16 @@ int queue_pop(struct piece *p, int queue[], int queue_pos) {
 }
 
 void queue_init (int queue[]) {
+    int used[7] = {0, 0, 0, 0, 0, 0, 0};
+
     for (int i = 0; i < 7; i++) {
         int rand = random() % 7;
-        while (i != 0) {
-            int dup = 0;
+
+        while (used[rand] && i != 0)
             rand = random() % 7;
-            for (int j = 0; j < i; j++) {
-                if (rand == queue[j])
-                    dup = 1;
-            }
-            if (!dup)
-                break;
-        }
+
         queue[i] = rand;
+        used[rand] = 1;
     }
 }
 
@@ -639,7 +636,7 @@ int main() {
 
     Node *board = malloc(sizeof(Node));
     board->next = NULL;
-    struct piece *curr = malloc(sizeof(struct piece));
+    Piece *curr = malloc(sizeof(Piece));
 
     for (int i = 0; i < BOARD_WIDTH; i++)
         board->row[i] = 0;
@@ -696,7 +693,7 @@ int main() {
             free_nodes(board);
             board = malloc(sizeof(Node));
             board->next = NULL;
-            curr = malloc(sizeof(struct piece));
+            curr = malloc(sizeof(Piece));
             for (int i = 0; i < BOARD_WIDTH; i++)
                 board->row[i] = 0;
             hold = -1;
