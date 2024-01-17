@@ -482,33 +482,36 @@ void gen_piece(Piece *p, int type) {
 
 int queue_pop(Piece *p, int queue[], int queue_pos) {
     gen_piece(p, queue[queue_pos]);
-    int rand = random() % 7;
 
+    int rand = random() % (7 - queue_pos);
     int used[7] = {0, 0, 0, 0, 0, 0, 0};
-    for (int i = 0; i < queue_pos; i++) {
+    int bag[7];
+    int bag_pos = 0;
+
+    for (int i = 0; i < queue_pos; i++)
         used[queue[i]] = 1;
-    }
 
-    while (used[rand] && queue_pos != 0)
-        rand = random() % 7;
+    for (int i = 0; i < 7; i++)
+        if (!used[i])
+            bag[bag_pos++] = i;
 
-    queue[queue_pos] = rand;
+    queue[queue_pos] = bag[rand];
     return (queue_pos + 1) % 7;
     
 }
 
 void queue_init (int queue[]) {
-    int used[7] = {0, 0, 0, 0, 0, 0, 0};
+    int bag[7] = {0, 1, 2, 3, 4, 5, 6};
 
-    for (int i = 0; i < 7; i++) {
-        int rand = random() % 7;
-
-        while (used[rand] && i != 0)
-            rand = random() % 7;
-
-        queue[i] = rand;
-        used[rand] = 1;
+    for (int i = 6; i > 0; i--) {
+        int rand = random() % (i + 1);
+        queue[6 - i] = bag[rand];
+        
+        for (int j = rand; j < i; j++)
+            bag[j] = bag[j + 1];
     }
+
+    queue[6] = bag[0];
 }
 
 void clear_lines(Node *n) {
