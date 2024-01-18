@@ -12,9 +12,9 @@ meaning SRS, hold, harddrop and all that good stuff.
     - [X] Define
     - [X] Spawn
     - [X] Draw (probably with ncurses)
-    - [ ] Move
-        - [ ] DAS
-        - [ ] ARR
+    - [X] Move
+        - [X] DAS
+        - [X] ARR
         - [X] Gravity
     - [X] Rotate (SRS)
     - [X] Harddrop
@@ -25,4 +25,5 @@ meaning SRS, hold, harddrop and all that good stuff.
 - [X] Handle line clearing
 - [X] Draw queue
 - [X] Draw ghost piece
-- [ ] Draw key overlay and stats
+- [X] Draw key overlay
+- [ ] Draw stats
