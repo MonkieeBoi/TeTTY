@@ -395,60 +395,86 @@ void draw_hold(WINDOW *w, int p) {
 void draw_keys(WINDOW *w, int inputs[]) {
     werase(w);
 
+    wattron(w, COLOR_PAIR(12));
+    mvwprintw(w, 0, 5, "▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄");
+    mvwprintw(w, 2, 5, "▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀");
+    mvwprintw(w, 4, 23, "▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄");
+    mvwprintw(w, 6, 23, "▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀");
+    mvwprintw(w, 2, 0, "▄▄▄▄▄");
+    mvwprintw(w, 4, 0, "▀▀▀▀▀");
+    mvwprintw(w, 4, 15, "▄▄▄▄▄");
+    mvwprintw(w, 6, 15, "▀▀▀▀▀");
+    wattroff(w, COLOR_PAIR(12));
+
     wattron(w, COLOR_PAIR(10));
-
-    mvwprintw(w, 0, 0, "                            ");
-    mvwprintw(w, 1, 0, "   ↕      (      )      /   ");
-    mvwprintw(w, 2, 0, "                            ");
-    mvwprintw(w, 3, 0, "                            ");
-    mvwprintw(w, 4, 0, "   ←      ↓      →      ▼   ");
-    mvwprintw(w, 5, 0, "                            ");
-
+    mvwprintw(w, 1, 5, "  (    )    /  ");
+    mvwprintw(w, 3, 0, "  ↕  ");
+    mvwprintw(w, 5, 15, "  ▼  ");
+    mvwprintw(w, 5, 23, "  ←    ↓    →  ");
     wattroff(w, COLOR_PAIR(10));
-    wattron(w, COLOR_PAIR(9));
 
+    wattron(w, COLOR_PAIR(11));
     if (inputs[0]) {
-        mvwprintw(w, 3, 0, "       ");
-        mvwprintw(w, 4, 0, "   ←   ");
-        mvwprintw(w, 5, 0, "       ");
+        mvwprintw(w, 4, 23, "▄▄▄▄▄");
+        mvwprintw(w, 6, 23, "▀▀▀▀▀");
     }
     if (inputs[1]) {
-        mvwprintw(w, 3, 14, "       ");
-        mvwprintw(w, 4, 14, "   →   ");
-        mvwprintw(w, 5, 14, "       ");
+        mvwprintw(w, 4, 33, "▄▄▄▄▄");
+        mvwprintw(w, 6, 33, "▀▀▀▀▀");
     }
     if (inputs[2]) {
-        mvwprintw(w, 3, 7, "       ");
-        mvwprintw(w, 4, 7, "   ↓   ");
-        mvwprintw(w, 5, 7, "       ");
+        mvwprintw(w, 4, 28, "▄▄▄▄▄");
+        mvwprintw(w, 6, 28, "▀▀▀▀▀");
     }
     if (inputs[3]) {
-        mvwprintw(w, 3, 21, "       ");
-        mvwprintw(w, 4, 21, "   ▼   ");
-        mvwprintw(w, 5, 21, "       ");
+        mvwprintw(w, 4, 15, "▄▄▄▄▄");
+        mvwprintw(w, 6, 15, "▀▀▀▀▀");
     }
     if (inputs[4]) {
-        mvwprintw(w, 0, 7, "       ");
-        mvwprintw(w, 1, 7, "   (   ");
-        mvwprintw(w, 2, 7, "       ");
+        mvwprintw(w, 0, 5, "▄▄▄▄▄");
+        mvwprintw(w, 2, 5, "▀▀▀▀▀");
     }
     if (inputs[5]) {
-        mvwprintw(w, 0, 14, "       ");
-        mvwprintw(w, 1, 14, "   )   ");
-        mvwprintw(w, 2, 14, "       ");
+        mvwprintw(w, 0, 10, "▄▄▄▄▄");
+        mvwprintw(w, 2, 10, "▀▀▀▀▀");
     }
     if (inputs[6]) {
-        mvwprintw(w, 0, 21, "       ");
-        mvwprintw(w, 1, 21, "   /   ");
-        mvwprintw(w, 2, 21, "       ");
+        mvwprintw(w, 0, 15, "▄▄▄▄▄");
+        mvwprintw(w, 2, 15, "▀▀▀▀▀");
     }
     if (inputs[7]) {
-        mvwprintw(w, 0, 0, "       ");
-        mvwprintw(w, 1, 0, "   ↕   ");
-        mvwprintw(w, 2, 0, "       ");
+        mvwprintw(w, 2, 0, "▄▄▄▄▄");
+        mvwprintw(w, 4, 0, "▀▀▀▀▀");
     }
+    wattroff(w, COLOR_PAIR(11));
 
+    wattron(w, COLOR_PAIR(9));
+    if (inputs[0]) {
+        mvwprintw(w, 5, 23, "  ←  ");
+    }
+    if (inputs[1]) {
+        mvwprintw(w, 5, 33, "  →  ");
+    }
+    if (inputs[2]) {
+        mvwprintw(w, 5, 28, "  ↓  ");
+    }
+    if (inputs[3]) {
+        mvwprintw(w, 5, 15, "  ▼  ");
+    }
+    if (inputs[4]) {
+        mvwprintw(w, 1, 5, "  (  ");
+    }
+    if (inputs[5]) {
+        mvwprintw(w, 1, 10, "  )  ");
+    }
+    if (inputs[6]) {
+        mvwprintw(w, 1, 15, "  /  ");
+    }
+    if (inputs[7]) {
+        mvwprintw(w, 3, 0, "  ↕  ");
+    }
     wattroff(w, COLOR_PAIR(9));
+
     wrefresh(w);
 }
 
@@ -609,8 +635,10 @@ int main() {
     init_pair(8, COLOR_WHITE,   -1);
     init_pair(9, COLOR_BLUE,   COLOR_WHITE);
     init_pair(10, COLOR_WHITE,   COLOR_BLUE);
+    init_pair(11, COLOR_WHITE,   -1);
+    init_pair(12, COLOR_BLUE,   -1);
 
-    if (COLS < 71 || LINES < 21) {
+    if (COLS < 76 || LINES < 21) {
         endwin();
         printf("Screen too small\n");
         return 1;
@@ -621,8 +649,8 @@ int main() {
     int offset_x = (COLS - width) / 2;
     int offset_y = (LINES - height) / 2;
 
-    if (offset_x < 29)
-        offset_x = 29;
+    if (offset_x < 35)
+        offset_x = 35;
 
     WINDOW *board_win;
     board_win = newwin(BOARD_HEIGHT, BOARD_WIDTH * 2, offset_y, offset_x + 11);
@@ -635,7 +663,7 @@ int main() {
     hold_win = newwin(2, 4 * 2, offset_y + 1, offset_x + 1);
 
     WINDOW *key_win;
-    key_win = newwin(9, 28, offset_y + 6, offset_x - 29);
+    key_win = newwin(7, 38, offset_y + 3, offset_x - 35);
 
     Node *board = malloc(sizeof(Node));
     board->next = NULL;
