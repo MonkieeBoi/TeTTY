@@ -706,6 +706,16 @@ int game(int fd) {
             last_inputs[i] = inputs[i];
         get_inputs(fd, inputs);
 
+        if (inputs[8] || inputs[9])
+            break;
+        if (inputs[3] && !last_inputs[3]) {
+            move_piece(board, curr, 0, BOARD_HEIGHT - curr->y);
+            lock_piece(board, curr);
+            queue_pos = queue_pop(curr, queue, queue_pos);
+            hold_used = 0;
+            grav_c = 0;
+        }
+
         if (inputs[0])
             ldas_c++;
         else
@@ -733,13 +743,6 @@ int game(int fd) {
 
         if (inputs[2])
             move_piece(board, curr, 0, BOARD_HEIGHT - curr->y);
-        if (inputs[3] && !last_inputs[3]) {
-            move_piece(board, curr, 0, BOARD_HEIGHT - curr->y);
-            lock_piece(board, curr);
-            queue_pos = queue_pop(curr, queue, queue_pos);
-            hold_used = 0;
-            grav_c = 0;
-        }
         if (inputs[4] && !last_inputs[4])
             spin_piece(board, curr, 2);
         if (inputs[5] && !last_inputs[5])
@@ -757,9 +760,6 @@ int game(int fd) {
             }
             hold_used = 1;
             grav_c = 0;
-        }
-        if (inputs[8] || inputs[9]) {
-            break;
         }
 
         clear_lines(board);
@@ -801,6 +801,7 @@ int main() {
         fd = open(conspath[i], O_RDONLY | O_NOCTTY | O_NONBLOCK);
         if (is_a_console(fd))
             break;
+        close(fd);
     }
 
     if (fd < 0)
@@ -827,7 +828,7 @@ int main() {
 	}
 
     initscr();
-    cbreak();
+    raw();
     curs_set(0);
     start_color();
     use_default_colors();
