@@ -531,7 +531,7 @@ int queue_pop(Piece *p, int queue[], int queue_pos) {
     gen_piece(p, queue[queue_pos]);
 
     int rand = random() % (7 - queue_pos);
-    int used[7] = {0, 0, 0, 0, 0, 0, 0};
+    int used[7] = {0};
     int bag[7];
     int bag_pos = 0;
 
@@ -561,10 +561,11 @@ void queue_init (int queue[]) {
     queue[6] = bag[0];
 }
 
-void clear_lines(Node *n) {
+int clear_lines(Node *n) {
     Node *head = n;
     int head_full = 1;
     n = n->next;
+    int cleared = 0;
 
     // Check head
     for (int i = 0; i < BOARD_WIDTH && head_full; i++)
@@ -574,9 +575,11 @@ void clear_lines(Node *n) {
     // Set head to next non-full row
     while (head_full && n != NULL) {
         int full = 1;
+        // Check if current row full
         for (int i = 0; full && i < BOARD_WIDTH; i++)
             if (n->row[i] == 0)
                 full = 0;
+        // Copy row to head
         for (int i = 0; !full && i < BOARD_WIDTH; i++)
             head->row[i] = n->row[i];
         if (!full) {
@@ -586,7 +589,10 @@ void clear_lines(Node *n) {
         Node *tmp = n;
         n = n->next;
         free(tmp);
+        cleared++;
     }
+
+    cleared += head_full;
 
     // Whole board full
     if (head_full) {
@@ -606,6 +612,7 @@ void clear_lines(Node *n) {
             Node *tmp = n;
             n = n->next;
             free(tmp);
+            cleared++;
         } else {
             last->next = n;
             last = n;
@@ -613,6 +620,8 @@ void clear_lines(Node *n) {
         }
     }
     last->next = NULL;
+
+    return cleared;
 }
 
 void get_inputs(int fd, int inputs[]) {
@@ -677,8 +686,8 @@ int game(int fd) {
     int queue[7];
     queue_init(queue);
     int queue_pos = 0;
-    int inputs[10] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-    int last_inputs[10] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+    int inputs[10] = {0};
+    int last_inputs[10] = {0};
 
     float grav = 0.02;
     float grav_c = 0;
