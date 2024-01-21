@@ -721,8 +721,8 @@ int game(int fd) {
     int keys = 0;
     int cleared = 0;
 
-    draw_gui(board, curr, offset_x + 10, offset_y);
     mvprintw(offset_y + 11, offset_x + 18, "READY");
+    draw_gui(board, curr, offset_x + 10, offset_y);
 
     draw_queue(queue_win, queue, queue_pos);
     draw_hold(hold_win, hold);
