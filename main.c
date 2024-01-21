@@ -361,10 +361,11 @@ void spin_piece(Node *n, Piece *p, int spin) {
 
 void draw_gui(Node *n, Piece *p, int x, int y) {
     for (int i = BOARD_HEIGHT - 1; i >= 0; i--) {
-        mvprintw(y + i, x, "│");
-        mvprintw(y + i, x + 1 + BOARD_WIDTH * 2, "│");
+        mvprintw(y + i, x, "█");
+        mvprintw(y + i, x + 1 + BOARD_WIDTH * 2, "█");
     }
-    mvprintw(y + BOARD_HEIGHT, x, "└────────────────────┘");
+    mvprintw(y + BOARD_HEIGHT, x, "▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀");
+    refresh();
 }
 
 void draw_piece(WINDOW *w, int x, int y, int type, int rot, int ghost) {
@@ -682,7 +683,6 @@ int game(int fd) {
 
     WINDOW *board_win;
     board_win = newwin(BOARD_HEIGHT, BOARD_WIDTH * 2, offset_y, offset_x + 11);
-    nodelay(board_win, 1);
 
     WINDOW *queue_win;
     queue_win = newwin(15, 4 * 2, offset_y, offset_x + 33);
@@ -719,14 +719,15 @@ int game(int fd) {
     int pieces = 0;
     int holds = 0;
     int keys = 0;
+    int cleared = 0;
 
     draw_gui(board, curr, offset_x + 10, offset_y);
     mvprintw(offset_y + 11, offset_x + 18, "READY");
-    refresh();
 
     draw_queue(queue_win, queue, queue_pos);
     draw_hold(hold_win, hold);
     draw_keys(key_win, inputs);
+    draw_stats(stat_win, 0, 0, 0, 0);
 
     usleep(500000);
     mvprintw(offset_y + 11, offset_x + 18, " GO! ");
@@ -755,6 +756,7 @@ int game(int fd) {
             move_piece(board, curr, 0, BOARD_HEIGHT - curr->y);
             lock_piece(board, curr);
             queue_pos = queue_pop(curr, queue, queue_pos);
+            cleared += clear_lines(board);
             hold_used = 0;
             grav_c = 0;
             pieces++;
@@ -808,8 +810,6 @@ int game(int fd) {
             grav_c = 0;
         }
 
-        clear_lines(board);
-
         // Updates
         draw_board(board_win, board, curr);
         draw_queue(queue_win, queue, queue_pos);
@@ -851,8 +851,10 @@ int main() {
         close(fd);
     }
 
-    if (fd < 0)
+    if (fd < 0) {
+        printf("no fd\n");
         return 1;
+    }
 
 	if (tcgetattr(fd, &old) == -1 || tcgetattr(fd, &new) == -1) {
         printf("tcgetattr error\n");
@@ -878,6 +880,7 @@ int main() {
     raw();
     curs_set(0);
     start_color();
+    noecho();
     use_default_colors();
 
     init_pair(1, COLOR_CYAN,    COLOR_CYAN);
