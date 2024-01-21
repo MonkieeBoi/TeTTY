@@ -251,6 +251,12 @@ int count_nodes(Node *n) {
     return length;
 }
 
+unsigned long long get_ms() {
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC_RAW, &ts);
+    return ((ts.tv_sec * 1000) + (ts.tv_nsec / 1000000));
+}
+
 int check_collide(int board[][10], int height, int x, int y, int type, int rot) {
     for (int i = 0; i < 4; i++) {
         int minoY = y + pieces[type][rot][i][1];
@@ -499,6 +505,19 @@ void draw_keys(WINDOW *w, int inputs[]) {
     wrefresh(w);
 }
 
+void draw_stats(WINDOW *w, int time, int pieces, int keys, int holds) {
+    werase(w);
+    if (time / 1000 >= 60)
+        mvwprintw(w, 0, 0, "%6s %d:%02d.%d", "Time", time / 60000, (time / 1000) % 60, (time / 10) % 100);
+    else
+        mvwprintw(w, 0, 0, "%6s %d.%d", "Time", time / 1000, time % 1000 / 10);
+    mvwprintw(w, 1, 0, "%6s %.2f", "PPS", pieces ? pieces / ((float) time / 1000) : 0);
+    mvwprintw(w, 2, 0, "%6s %.2f", "KPP", pieces ? (float) keys / pieces : 0);
+    mvwprintw(w, 3, 0, "%6s %d", "Hold", holds);
+    mvwprintw(w, 4, 0, "%6s %d", "#", pieces);
+    wrefresh(w);
+}
+
 void lock_piece(Node *n, Piece *p) {
     int y = BOARD_HEIGHT - 1;
     for (int i = 3; i >= 0; i--) {
@@ -648,13 +667,13 @@ void free_nodes(Node *n) {
 }
 
 int game(int fd) {
-    if (COLS < 76 || LINES < 21) {
+    if (COLS < 76 || LINES < 26) {
         printf("Screen too small\n");
         return 1;
     }
 
-    int width = 44;
-    int height = 21;
+    int width = 40;
+    int height = 26;
     int offset_x = (COLS - width) / 2;
     int offset_y = (LINES - height) / 2;
 
@@ -673,6 +692,9 @@ int game(int fd) {
 
     WINDOW *key_win;
     key_win = newwin(7, 38, offset_y + 3, offset_x - 35);
+
+    WINDOW *stat_win;
+    stat_win = newwin(5, 14, offset_y + BOARD_HEIGHT + 1, offset_x + 14);
 
     Node *board = malloc(sizeof(Node));
     board->next = NULL;
@@ -694,6 +716,10 @@ int game(int fd) {
     int ldas_c = 0;
     int rdas_c = 0;
 
+    int pieces = 0;
+    int holds = 0;
+    int keys = 0;
+
     draw_gui(board, curr, offset_x + 10, offset_y);
     mvprintw(offset_y + 11, offset_x + 18, "READY");
     refresh();
@@ -707,13 +733,21 @@ int game(int fd) {
     refresh();
     usleep(500000);
 
+    int start_time = get_ms();
+    int game_time;
+
     queue_pos = queue_pop(curr, queue, 0);
 
     // Game Loop
     while (1) {
+        game_time = get_ms();
         for (int i = 0; i < 10; i++)
             last_inputs[i] = inputs[i];
         get_inputs(fd, inputs);
+
+        for (int i = 0; i < 8; i++) {
+            keys += inputs[i] && !last_inputs[i];
+        }
 
         if (inputs[8] || inputs[9])
             break;
@@ -723,6 +757,7 @@ int game(int fd) {
             queue_pos = queue_pop(curr, queue, queue_pos);
             hold_used = 0;
             grav_c = 0;
+            pieces++;
         }
 
         if (inputs[0])
@@ -762,10 +797,12 @@ int game(int fd) {
             if (hold == -1) {
                 hold = curr->type;
                 queue_pos = queue_pop(curr, queue, queue_pos);
+                holds++;
             } else if (!hold_used) {
                 int tmp = hold;
                 hold = curr->type;
                 gen_piece(curr, tmp);
+                holds++;
             }
             hold_used = 1;
             grav_c = 0;
@@ -778,6 +815,7 @@ int game(int fd) {
         draw_queue(queue_win, queue, queue_pos);
         draw_hold(hold_win, hold);
         draw_keys(key_win, inputs);
+        draw_stats(stat_win, game_time - start_time, pieces, keys, holds);
 
         // Gravity Movement
         grav_c += grav;

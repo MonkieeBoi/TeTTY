@@ -29,4 +29,4 @@ meaning SRS, hold, harddrop and all that good stuff.
 - [X] Draw queue
 - [X] Draw ghost piece
 - [X] Draw key overlay
-- [ ] Draw stats
+- [X] Draw stats
