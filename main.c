@@ -257,7 +257,7 @@ unsigned long long get_ms() {
     return ((ts.tv_sec * 1000) + (ts.tv_nsec / 1000000));
 }
 
-int check_collide(int board[][10], int height, int x, int y, int type, int rot) {
+int check_collide(int board[][BOARD_WIDTH], int height, int x, int y, int type, int rot) {
     for (int i = 0; i < 4; i++) {
         int minoY = y + pieces[type][rot][i][1];
         int minoX = x + pieces[type][rot][i][0];
@@ -423,7 +423,7 @@ void draw_hold(WINDOW *w, int p) {
 void draw_keys(WINDOW *w, int inputs[]) {
     werase(w);
 
-    wattron(w, COLOR_PAIR(12));
+    wattron(w, COLOR_PAIR(11));
     mvwprintw(w, 0, 5, "▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄");
     mvwprintw(w, 2, 5, "▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀");
     mvwprintw(w, 4, 23, "▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄");
@@ -432,7 +432,7 @@ void draw_keys(WINDOW *w, int inputs[]) {
     mvwprintw(w, 4, 0, "▀▀▀▀▀");
     mvwprintw(w, 4, 15, "▄▄▄▄▄");
     mvwprintw(w, 6, 15, "▀▀▀▀▀");
-    wattroff(w, COLOR_PAIR(12));
+    wattroff(w, COLOR_PAIR(11));
 
     wattron(w, COLOR_PAIR(10));
     mvwprintw(w, 1, 5, "  (    )    /  ");
@@ -441,7 +441,7 @@ void draw_keys(WINDOW *w, int inputs[]) {
     mvwprintw(w, 5, 23, "  ←    ↓    →  ");
     wattroff(w, COLOR_PAIR(10));
 
-    wattron(w, COLOR_PAIR(11));
+    wattron(w, COLOR_PAIR(8));
     if (inputs[0]) {
         mvwprintw(w, 4, 23, "▄▄▄▄▄");
         mvwprintw(w, 6, 23, "▀▀▀▀▀");
@@ -474,7 +474,7 @@ void draw_keys(WINDOW *w, int inputs[]) {
         mvwprintw(w, 2, 0, "▄▄▄▄▄");
         mvwprintw(w, 4, 0, "▀▀▀▀▀");
     }
-    wattroff(w, COLOR_PAIR(11));
+    wattroff(w, COLOR_PAIR(8));
 
     wattron(w, COLOR_PAIR(9));
     if (inputs[0]) {
@@ -644,6 +644,17 @@ int clear_lines(Node *n) {
     return cleared;
 }
 
+void wash_board(Node *n) {
+    while (n != NULL) {
+        for (int i = 0; i < BOARD_WIDTH; i++) {
+            if (n->row[i] != 0) {
+                n->row[i] = 11;
+            }
+        }
+        n = n->next;
+    }
+}
+
 void get_inputs(int fd, int inputs[]) {
 	unsigned char buf[32];
     ssize_t n = read(fd, buf, sizeof(buf));
@@ -760,6 +771,8 @@ int game(int fd) {
             hold_used = 0;
             grav_c = 0;
             pieces++;
+            if (cleared >= 40)
+                break;
         }
 
         if (inputs[0])
@@ -823,6 +836,19 @@ int game(int fd) {
         grav_c = grav_c - (int) grav_c;
 
         usleep(1000000 / FPS);
+    }
+
+    // Post game screen
+    if (cleared >= 40) {
+        wash_board(board);
+        draw_board(board_win, board, curr);
+        while (1) {
+            get_inputs(fd, inputs);
+            if (inputs[8] || inputs[9])
+                break;
+            draw_keys(key_win, inputs);
+            usleep(1000000 / FPS);
+        }
     }
 
     free_nodes(board);
@@ -893,8 +919,7 @@ int main() {
     init_pair(8, COLOR_WHITE,   -1);
     init_pair(9, COLOR_BLUE,   COLOR_WHITE);
     init_pair(10, COLOR_WHITE,   COLOR_BLUE);
-    init_pair(11, COLOR_WHITE,   -1);
-    init_pair(12, COLOR_BLUE,   -1);
+    init_pair(11, COLOR_BLUE,   -1);
 
     while (!game(fd));
 
@@ -902,10 +927,12 @@ int main() {
 
     if (ioctl(fd, KDSKBMODE, K_UNICODE)) {
         printf("ioctl KDSKBMODE error\n");
+        close(fd);
         return 1;
     }
     if (tcsetattr(fd, 0, &old) == -1) {
         printf("tcsetattr error\n");
+        close(fd);
         return 1;
     }
     close(fd);
