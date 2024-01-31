@@ -10,6 +10,10 @@
 
 #define BOARD_HEIGHT 20
 #define BOARD_WIDTH 10
+#define WIDTH 38 + 7 + 1 + BOARD_WIDTH * 2 + 1 + 9
+#define HEIGHT BOARD_HEIGHT + 6
+#define RIGHT_MARGIN 46
+
 #define SPAWN_X 4
 #define SPAWN_Y 0
 #define SPAWN_ROT 0
@@ -251,7 +255,7 @@ int count_nodes(Node *n) {
     return length;
 }
 
-unsigned long long get_ms() {
+time_t get_ms() {
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC_RAW, &ts);
     return ((ts.tv_sec * 1000) + (ts.tv_nsec / 1000000));
@@ -364,7 +368,8 @@ void draw_gui(Node *n, Piece *p, int x, int y) {
         mvprintw(y + i, x, "█");
         mvprintw(y + i, x + 1 + BOARD_WIDTH * 2, "█");
     }
-    mvprintw(y + BOARD_HEIGHT, x, "▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀");
+    for (int i = 0; i < BOARD_WIDTH + 1; i++)
+        mvprintw(y + BOARD_HEIGHT, x + i * 2, "▀▀");
     refresh();
 }
 
@@ -508,10 +513,16 @@ void draw_keys(WINDOW *w, int inputs[]) {
 
 void draw_stats(WINDOW *w, int time, int pieces, int keys, int holds) {
     werase(w);
-    if (time / 1000 >= 60)
-        mvwprintw(w, 0, 0, "%6s %d:%02d.%d", "Time", time / 60000, (time / 1000) % 60, (time / 10) % 100);
+
+    int min = time / 60000;
+    int sec = (time / 1000) % 60;
+    int csec = (time / 10) % 100;
+
+    if (min)
+        mvwprintw(w, 0, 0, "%6s %d:%02d.%d", "Time", min, sec, csec);
     else
-        mvwprintw(w, 0, 0, "%6s %d.%d", "Time", time / 1000, time % 1000 / 10);
+        mvwprintw(w, 0, 0, "%6s %d.%d", "Time", sec, csec);
+
     mvwprintw(w, 1, 0, "%6s %.2f", "PPS", pieces ? pieces / ((float) time / 1000) : 0);
     mvwprintw(w, 2, 0, "%6s %.2f", "KPP", pieces ? (float) keys / pieces : 0);
     mvwprintw(w, 3, 0, "%6s %d", "Hold", holds);
@@ -679,33 +690,23 @@ void free_nodes(Node *n) {
 }
 
 int game(int fd) {
-    if (COLS < 76 || LINES < 26) {
+    if (COLS < WIDTH || LINES < 26) {
         printf("Screen too small\n");
         return 1;
     }
 
-    int width = 40;
-    int height = 26;
-    int offset_x = (COLS - width) / 2;
-    int offset_y = (LINES - height) / 2;
+    // center board
+    int offset_x = (COLS - BOARD_WIDTH * 2) / 2 - RIGHT_MARGIN;
+    int offset_y = (LINES - HEIGHT) / 2;
 
-    if (offset_x < 35)
-        offset_x = 35;
+    if (offset_x < 0)
+        offset_x = 0;
 
-    WINDOW *board_win;
-    board_win = newwin(BOARD_HEIGHT, BOARD_WIDTH * 2, offset_y, offset_x + 11);
-
-    WINDOW *queue_win;
-    queue_win = newwin(15, 4 * 2, offset_y, offset_x + 33);
-
-    WINDOW *hold_win;
-    hold_win = newwin(2, 4 * 2, offset_y + 1, offset_x + 1);
-
-    WINDOW *key_win;
-    key_win = newwin(7, 38, offset_y + 3, offset_x - 35);
-
-    WINDOW *stat_win;
-    stat_win = newwin(5, 14, offset_y + BOARD_HEIGHT + 1, offset_x + 14);
+    WINDOW *board_win = newwin(BOARD_HEIGHT, BOARD_WIDTH * 2, offset_y, offset_x + RIGHT_MARGIN);
+    WINDOW *queue_win = newwin(15, 4 * 2, offset_y, offset_x + RIGHT_MARGIN + BOARD_WIDTH * 2 + 2);
+    WINDOW *hold_win = newwin(2, 4 * 2, offset_y + 1, offset_x + 36);
+    WINDOW *key_win = newwin(7, 38, offset_y + 3, offset_x);
+    WINDOW *stat_win = newwin(5, 14, offset_y + BOARD_HEIGHT + 1, offset_x + RIGHT_MARGIN + 3);
 
     Node *board = malloc(sizeof(Node));
     board->next = NULL;
@@ -732,8 +733,8 @@ int game(int fd) {
     int keys = 0;
     int cleared = 0;
 
-    mvprintw(offset_y + 11, offset_x + 18, "READY");
-    draw_gui(board, curr, offset_x + 10, offset_y);
+    mvprintw(offset_y + 11, offset_x + 53, "READY");
+    draw_gui(board, curr, offset_x + 45, offset_y);
 
     draw_queue(queue_win, queue, queue_pos);
     draw_hold(hold_win, hold);
@@ -741,12 +742,12 @@ int game(int fd) {
     draw_stats(stat_win, 0, 0, 0, 0);
 
     usleep(500000);
-    mvprintw(offset_y + 11, offset_x + 18, " GO! ");
+    mvprintw(offset_y + 11, offset_x + 53, " GO! ");
     refresh();
     usleep(500000);
 
-    int start_time = get_ms();
-    int game_time;
+    time_t start_time = get_ms();
+    time_t game_time;
 
     queue_pos = queue_pop(curr, queue, 0);
 
