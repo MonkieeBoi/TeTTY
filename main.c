@@ -385,18 +385,26 @@ void draw_piece(WINDOW *w, int x, int y, int type, int rot, int ghost) {
     }
 }
 
-void draw_board(WINDOW *w, Node *n, Piece *p) {
+void draw_board(WINDOW *w, Node *n, Piece *p, int line) {
     werase(w);
 
     int orig_y = p->y;
     move_piece(n, p, 0, BOARD_HEIGHT - p->y);
-    draw_piece(w, p->x, p->y, p->type, p->rot, 1);
+    int ghost_y = p->y;
     p->y = orig_y;
 
     int y = BOARD_HEIGHT - 1;
+    line = BOARD_HEIGHT - line - 1;
+
     while (n != NULL) {
         for (int i = 0; i < BOARD_WIDTH; i++) {
-            if (n->row[i]) {
+            if (n->row[i] && y == line) {
+                wattron(w, COLOR_PAIR(n->row[i] + 11));
+                mvwprintw(w, y, 2 * i, "__");
+                wattroff(w, COLOR_PAIR(n->row[i] + 11));
+            } else if (y == line) {
+                mvwprintw(w, y, 2 * i, "__");
+            } else if (n->row[i]) {
                 wattron(w, COLOR_PAIR(n->row[i]));
                 mvwprintw(w, y, 2 * i, "[]");
                 wattroff(w, COLOR_PAIR(n->row[i]));
@@ -405,6 +413,12 @@ void draw_board(WINDOW *w, Node *n, Piece *p) {
         n = n->next;
         y--;
     }
+
+    for (int i = 0; i < BOARD_WIDTH && y >= line && line > 0; i++) {
+        mvwprintw(w, line, 2 * i, "__");
+    }
+
+    draw_piece(w, p->x, ghost_y, p->type, p->rot, 1);
     draw_piece(w, p->x, p->y, p->type, p->rot, 0);
     wrefresh(w);
 }
@@ -825,7 +839,7 @@ int game(int fd) {
         }
 
         // Updates
-        draw_board(board_win, board, curr);
+        draw_board(board_win, board, curr, 40 - cleared);
         draw_queue(queue_win, queue, queue_pos);
         draw_hold(hold_win, hold);
         draw_keys(key_win, inputs);
@@ -842,7 +856,7 @@ int game(int fd) {
     // Post game screen
     if (cleared >= 40) {
         wash_board(board);
-        draw_board(board_win, board, curr);
+        draw_board(board_win, board, curr, 21);
         while (1) {
             get_inputs(fd, inputs);
             if (inputs[8] || inputs[9])
@@ -921,6 +935,13 @@ int main() {
     init_pair(9, COLOR_BLUE,   COLOR_WHITE);
     init_pair(10, COLOR_WHITE,   COLOR_BLUE);
     init_pair(11, COLOR_BLUE,   -1);
+    init_pair(12, COLOR_BLACK,    COLOR_CYAN);
+    init_pair(13, COLOR_BLACK,    COLOR_BLUE);
+    init_pair(14, COLOR_BLACK,   COLOR_WHITE);
+    init_pair(15, COLOR_BLACK,  COLOR_YELLOW);
+    init_pair(16, COLOR_BLACK,   COLOR_GREEN);
+    init_pair(17, COLOR_BLACK, COLOR_MAGENTA);
+    init_pair(18, COLOR_BLACK,     COLOR_RED);
 
     while (!game(fd));
 
