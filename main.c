@@ -19,6 +19,7 @@
 #define SPAWN_ROT 0
 #define FPS 60
 #define DAS 5
+#define CLEAR_GOAL 40
 
 // scancodes
 unsigned char keys[10] = {
@@ -598,9 +599,7 @@ void queue_init (int queue[]) {
     for (int i = 6; i > 0; i--) {
         int rand = random() % (i + 1);
         queue[6 - i] = bag[rand];
-
-        for (int j = rand; j < i; j++)
-            bag[j] = bag[j + 1];
+        bag[rand] = bag[i];
     }
 
     queue[6] = bag[0];
@@ -704,17 +703,20 @@ void free_nodes(Node *n) {
 }
 
 int game(int fd) {
-    if (COLS < WIDTH || LINES < 26) {
+    if (COLS < WIDTH || LINES < HEIGHT) {
         printf("Screen too small\n");
         return 1;
     }
 
     // center board
     int offset_x = (COLS - BOARD_WIDTH * 2) / 2 - RIGHT_MARGIN;
-    int offset_y = (LINES - HEIGHT) / 2;
+    int offset_y = (LINES - HEIGHT) / 2 - 6;
 
     if (offset_x < 0)
         offset_x = 0;
+
+    if (offset_y < 0)
+        offset_y = 0;
 
     WINDOW *board_win = newwin(BOARD_HEIGHT, BOARD_WIDTH * 2, offset_y, offset_x + RIGHT_MARGIN);
     WINDOW *queue_win = newwin(15, 4 * 2, offset_y, offset_x + RIGHT_MARGIN + BOARD_WIDTH * 2 + 2);
@@ -786,7 +788,7 @@ int game(int fd) {
             hold_used = 0;
             grav_c = 0;
             pieces++;
-            if (cleared >= 40)
+            if (cleared >= CLEAR_GOAL)
                 break;
         }
 
@@ -839,7 +841,7 @@ int game(int fd) {
         }
 
         // Updates
-        draw_board(board_win, board, curr, 40 - cleared);
+        draw_board(board_win, board, curr, CLEAR_GOAL - cleared);
         draw_queue(queue_win, queue, queue_pos);
         draw_hold(hold_win, hold);
         draw_keys(key_win, inputs);
@@ -854,9 +856,10 @@ int game(int fd) {
     }
 
     // Post game screen
-    if (cleared >= 40) {
+    if (cleared >= CLEAR_GOAL) {
         wash_board(board);
         draw_board(board_win, board, curr, 21);
+        draw_stats(stat_win, game_time - start_time, pieces, keys, holds);
         while (1) {
             get_inputs(fd, inputs);
             if (inputs[8] || inputs[9])
@@ -924,24 +927,24 @@ int main() {
     noecho();
     use_default_colors();
 
-    init_pair(1, COLOR_CYAN,    COLOR_CYAN);
-    init_pair(2, COLOR_BLUE,    COLOR_BLUE);
-    init_pair(3, COLOR_WHITE,   COLOR_WHITE);
-    init_pair(4, COLOR_YELLOW,  COLOR_YELLOW);
-    init_pair(5, COLOR_GREEN,   COLOR_GREEN);
-    init_pair(6, COLOR_MAGENTA, COLOR_MAGENTA);
-    init_pair(7, COLOR_RED,     COLOR_RED);
-    init_pair(8, COLOR_WHITE,   -1);
-    init_pair(9, COLOR_BLUE,   COLOR_WHITE);
+    init_pair(1,  COLOR_CYAN,    COLOR_CYAN);
+    init_pair(2,  COLOR_BLUE,    COLOR_BLUE);
+    init_pair(3,  COLOR_WHITE,   COLOR_WHITE);
+    init_pair(4,  COLOR_YELLOW,  COLOR_YELLOW);
+    init_pair(5,  COLOR_GREEN,   COLOR_GREEN);
+    init_pair(6,  COLOR_MAGENTA, COLOR_MAGENTA);
+    init_pair(7,  COLOR_RED,     COLOR_RED);
+    init_pair(8,  COLOR_WHITE,   -1);
+    init_pair(9,  COLOR_BLUE,    COLOR_WHITE);
     init_pair(10, COLOR_WHITE,   COLOR_BLUE);
-    init_pair(11, COLOR_BLUE,   -1);
-    init_pair(12, COLOR_BLACK,    COLOR_CYAN);
-    init_pair(13, COLOR_BLACK,    COLOR_BLUE);
+    init_pair(11, COLOR_BLUE,    -1);
+    init_pair(12, COLOR_BLACK,   COLOR_CYAN);
+    init_pair(13, COLOR_BLACK,   COLOR_BLUE);
     init_pair(14, COLOR_BLACK,   COLOR_WHITE);
-    init_pair(15, COLOR_BLACK,  COLOR_YELLOW);
+    init_pair(15, COLOR_BLACK,   COLOR_YELLOW);
     init_pair(16, COLOR_BLACK,   COLOR_GREEN);
-    init_pair(17, COLOR_BLACK, COLOR_MAGENTA);
-    init_pair(18, COLOR_BLACK,     COLOR_RED);
+    init_pair(17, COLOR_BLACK,   COLOR_MAGENTA);
+    init_pair(18, COLOR_BLACK,   COLOR_RED);
 
     while (!game(fd));
 
