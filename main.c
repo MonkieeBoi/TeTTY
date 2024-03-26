@@ -421,16 +421,12 @@ void draw_board(WINDOW *w, Node *n, Piece *p, int line) {
 
     while (n != NULL) {
         for (int i = 0; i < BOARD_WIDTH; i++) {
-            if (n->row[i] && y == line) {
-                wattron(w, COLOR_PAIR(n->row[i] + 11));
-                mvwprintw(w, y, 2 * i, "__");
-                wattroff(w, COLOR_PAIR(n->row[i] + 11));
-            } else if (y == line) {
-                mvwprintw(w, y, 2 * i, "__");
-            } else if (n->row[i]) {
+            if (n->row[i]) {
                 wattron(w, COLOR_PAIR(n->row[i]));
                 mvwprintw(w, y, 2 * i, "[]");
                 wattroff(w, COLOR_PAIR(n->row[i]));
+            } else if (y == line) {
+                mvwprintw(w, y, 2 * i, "__");
             }
         }
         n = n->next;
