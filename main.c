@@ -21,11 +21,33 @@
 #define DAS 5
 #define CLEAR_GOAL 40
 
+enum Parser {
+    CODE,
+    MOD,
+    STATE,
+    END,
+    INVALID,
+};
+
+// extended keyboard protocol keycodes
+unsigned int keys[10] = {
+    KEY_LEFT,  // Left  | ←
+    KEY_RIGHT, // Right | →
+    KEY_DOWN,  // SD    | ↓
+    ' ',       // HD    | Space
+    'a',       // CCW   | a
+    's',       // CW    | s
+    'd',       // 180   | d
+    57441,     // Hold  | shift
+    'r',       // Reset | r
+    'q'        // Quit  | q
+};
+
 // scancodes
-unsigned char keys[10] = {
-    0x4b,  // Left  | ←
-    0x4d,  // Right | →
-    0x50,  // SD    | ↓
+unsigned char keys2[10] = {
+    0x4b, // Left  | ←
+    0x4d, // Right | →
+    0x50, // SD    | ↓
     0x39, // HD    | Space
     0x1e, // CCW   | a
     0x1f, // CW    | s
@@ -680,15 +702,79 @@ void wash_board(Node *n) {
 }
 
 void get_inputs(int fd, int inputs[]) {
-	unsigned char buf[32];
-    ssize_t n = read(fd, buf, sizeof(buf));
+    // Using extended keyboard protocol
+    if (fd == -1) {
+        char c;
+        enum Parser state = INVALID;
+        int key = 0;
+        int pressed = 0;
+        while ((c = getch()) != ERR) {
+            if (c == 27) {
+                key = 0;
+                pressed = 0;
+                state = CODE;
+                continue;
+            }
 
-    for (ssize_t i = 0; i < n; i++) {
-        for (int j = 0; j < 10; j++) {
-            if (keys[j] == buf[i])
-                inputs[j] = 1;
-            if ((keys[j] | 0x80) == buf[i])
-                inputs[j] = 0;
+            switch (state) {
+                case CODE:
+                    if ('0' <= c && c <= '9') {
+                        key *= 10;
+                        key += (c - '0');
+                    } else if (c == ';')
+                        state++;
+                    else if (c != '[')
+                        state = INVALID;
+                    break;
+                case MOD:
+                    if (c == ':') state++;
+                    break;
+                case STATE:
+                    pressed = (c == '1');
+                    state++;
+                    break;
+                case END:
+                    if (key == 1 && 'A' <= c && c <= 'D') {
+                        switch (c) {
+                            case 'A':
+                                key = KEY_UP;
+                                break;
+                            case 'B':
+                                key = KEY_DOWN;
+                                break;
+                            case 'C':
+                                key = KEY_RIGHT;
+                                break;
+                            case 'D':
+                                key = KEY_LEFT;
+                                break;
+                        }
+                    }
+                    for (int i = 0; i < 10; i++) {
+                        if (keys[i] == key) {
+                            inputs[i] = pressed;
+                        }
+                    }
+                    state++;
+                    break;
+                case INVALID:
+                    break;
+            }
+        }
+    // Reading input directly
+    } else {
+        unsigned char buf[32];
+        ssize_t n = read(fd, buf, sizeof(buf));
+
+        for (ssize_t i = 0; i < n; i++) {
+            for (int j = 0; j < 10; j++) {
+                if (keys2[j] == buf[i]) {
+                    inputs[j] = 1;
+                    continue;
+                }
+                if ((keys2[j] | 0x80) == buf[i])
+                    inputs[j] = 0;
+            }
         }
     }
 }
@@ -704,8 +790,7 @@ void free_nodes(Node *n) {
 
 int game(int fd) {
     if (COLS < WIDTH || LINES < HEIGHT) {
-        printf("Screen too small\n");
-        return 1;
+        return 2;
     }
 
     // center board
@@ -852,7 +937,7 @@ int game(int fd) {
         move_piece(board, curr, 0, (int) grav_c);
         grav_c = grav_c - (int) grav_c;
 
-        usleep(1000000 / FPS);
+        usleep(1000000 / FPS - (get_ms() - game_time));
     }
 
     // Post game screen
@@ -880,45 +965,48 @@ int game(int fd) {
     return inputs[9];
 }
 
-int main() {
+int main(int argc, char **argv) {
     srandom(time(NULL));
     setlocale(LC_ALL, "");
 
     struct termios old;
     struct termios new;
-
     int fd = -1;
-    for (int i = 0; conspath[i]; i++) {
-        fd = open(conspath[i], O_RDONLY | O_NOCTTY | O_NONBLOCK);
-        if (is_a_console(fd))
-            break;
-        close(fd);
+
+    // Setup
+    if (argc > 1) {
+        for (int i = 0; conspath[i]; i++) {
+            fd = open(conspath[i], O_RDONLY | O_NOCTTY | O_NONBLOCK);
+            if (is_a_console(fd))
+                break;
+            close(fd);
+        }
+
+        if (fd < 0) {
+            printf("no fd\n");
+            return 1;
+        }
+
+        if (tcgetattr(fd, &old) == -1 || tcgetattr(fd, &new) == -1) {
+            printf("tcgetattr error\n");
+            return 1;
+        }
+
+        new.c_lflag &= ~((tcflag_t)(ICANON | ECHO | ISIG));
+        new.c_iflag     = 0;
+        new.c_cc[VMIN]  = 0;
+        new.c_cc[VTIME] = 0;
+
+        if (tcsetattr(fd, TCSAFLUSH, &new) == -1) {
+            printf("tcsetattr error\n");
+            return 1;
+        }
+
+        if (ioctl(fd, KDSKBMODE, K_RAW)) {
+            printf("ioctl KDSKBMODE error\n");
+            return 1;
+        }
     }
-
-    if (fd < 0) {
-        printf("no fd\n");
-        return 1;
-    }
-
-	if (tcgetattr(fd, &old) == -1 || tcgetattr(fd, &new) == -1) {
-        printf("tcgetattr error\n");
-        return 1;
-    }
-
-	new.c_lflag &= ~((tcflag_t)(ICANON | ECHO | ISIG));
-	new.c_iflag     = 0;
-	new.c_cc[VMIN]  = 0;
-	new.c_cc[VTIME] = 0;
-
-	if (tcsetattr(fd, TCSAFLUSH, &new) == -1) {
-        printf("tcsetattr error\n");
-        return 1;
-    }
-
-	if (ioctl(fd, KDSKBMODE, K_RAW)) {
-        printf("ioctl KDSKBMODE error\n");
-        return 1;
-	}
 
     initscr();
     raw();
@@ -926,6 +1014,7 @@ int main() {
     start_color();
     noecho();
     use_default_colors();
+    nodelay(stdscr, 1);
 
     init_pair(1,  COLOR_CYAN,    COLOR_CYAN);
     init_pair(2,  COLOR_BLUE,    COLOR_BLUE);
@@ -946,21 +1035,34 @@ int main() {
     init_pair(17, COLOR_BLACK,   COLOR_MAGENTA);
     init_pair(18, COLOR_BLACK,   COLOR_RED);
 
-    while (!game(fd));
+    if (argc < 2) {
+        fprintf(stderr, "\e[>11u");
+    }
+    int status = 0;
+    while (!(status = game(fd)));
 
+    // Cleanup
     endwin();
 
-    if (ioctl(fd, KDSKBMODE, K_UNICODE)) {
-        printf("ioctl KDSKBMODE error\n");
+    if (argc > 1) {
+        if (ioctl(fd, KDSKBMODE, K_UNICODE)) {
+            printf("ioctl KDSKBMODE error\n");
+            close(fd);
+            return 1;
+        }
+        if (tcsetattr(fd, 0, &old) == -1) {
+            printf("tcsetattr error\n");
+            close(fd);
+            return 1;
+        }
         close(fd);
-        return 1;
+    } else {
+        fprintf(stderr, "\e[<u");
     }
-    if (tcsetattr(fd, 0, &old) == -1) {
-        printf("tcsetattr error\n");
-        close(fd);
-        return 1;
+
+    if (status == 2) {
+        fprintf(stderr, "Screen dimensions smaller than %dx%d\n", WIDTH, HEIGHT);
     }
-    close(fd);
 
     return 0;
 }
