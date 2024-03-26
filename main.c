@@ -21,6 +21,8 @@
 #define DAS 5
 #define CLEAR_GOAL 40
 
+#define COLOR_ORANGE 8
+
 enum Parser {
     CODE,
     MOD,
@@ -1010,11 +1012,12 @@ int main(int argc, char **argv) {
     start_color();
     noecho();
     use_default_colors();
+    init_color(COLOR_ORANGE, 816, 529, 439);
     nodelay(stdscr, 1);
 
     init_pair(1,  COLOR_CYAN,    COLOR_CYAN);
     init_pair(2,  COLOR_BLUE,    COLOR_BLUE);
-    init_pair(3,  COLOR_WHITE,   COLOR_WHITE);
+    init_pair(3,  COLOR_ORANGE,  COLOR_ORANGE);
     init_pair(4,  COLOR_YELLOW,  COLOR_YELLOW);
     init_pair(5,  COLOR_GREEN,   COLOR_GREEN);
     init_pair(6,  COLOR_MAGENTA, COLOR_MAGENTA);
