@@ -972,7 +972,7 @@ int main(int argc, char **argv) {
     int fd = -1;
 
     // Setup
-    if (argc > 1) {
+    if (argc < 2) {
         for (int i = 0; conspath[i]; i++) {
             fd = open(conspath[i], O_RDONLY | O_NOCTTY | O_NONBLOCK);
             if (is_a_console(fd))
@@ -1034,16 +1034,19 @@ int main(int argc, char **argv) {
     init_pair(17, COLOR_BLACK,   COLOR_MAGENTA);
     init_pair(18, COLOR_BLACK,   COLOR_RED);
 
-    if (argc < 2) {
+    if (argc > 1)
         fprintf(stderr, "\e[>11u");
-    }
+
     int status = 0;
     while (!(status = game(fd)));
 
     // Cleanup
+    if (argc > 1)
+        fprintf(stderr, "\e[<u");
+
     endwin();
 
-    if (argc > 1) {
+    if (argc < 2) {
         if (ioctl(fd, KDSKBMODE, K_UNICODE)) {
             printf("ioctl KDSKBMODE error\n");
             close(fd);
@@ -1055,8 +1058,6 @@ int main(int argc, char **argv) {
             return 1;
         }
         close(fd);
-    } else {
-        fprintf(stderr, "\e[<u");
     }
 
     if (status == 2) {
