@@ -1012,12 +1012,11 @@ int main(int argc, char **argv) {
     start_color();
     noecho();
     use_default_colors();
-    init_color(COLOR_ORANGE, 816, 529, 439);
     nodelay(stdscr, 1);
 
     init_pair(1,  COLOR_CYAN,    COLOR_CYAN);
     init_pair(2,  COLOR_BLUE,    COLOR_BLUE);
-    init_pair(3,  COLOR_ORANGE,  COLOR_ORANGE);
+    init_pair(3,  COLOR_WHITE,   COLOR_WHITE);
     init_pair(4,  COLOR_YELLOW,  COLOR_YELLOW);
     init_pair(5,  COLOR_GREEN,   COLOR_GREEN);
     init_pair(6,  COLOR_MAGENTA, COLOR_MAGENTA);
@@ -1033,6 +1032,12 @@ int main(int argc, char **argv) {
     init_pair(16, COLOR_BLACK,   COLOR_GREEN);
     init_pair(17, COLOR_BLACK,   COLOR_MAGENTA);
     init_pair(18, COLOR_BLACK,   COLOR_RED);
+
+    // Make orange if supported
+    if (COLOR_PAIRS > 8) {
+        init_color(COLOR_ORANGE, 816, 529, 439);
+        init_pair(3,  COLOR_ORANGE,  COLOR_ORANGE);
+    }
 
     if (argc > 1)
         fprintf(stderr, "\e[>11u");
