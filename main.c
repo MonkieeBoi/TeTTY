@@ -453,10 +453,11 @@ void draw_queue(WINDOW *w, int queue[], int queue_pos) {
     wrefresh(w);
 }
 
-void draw_hold(WINDOW *w, int p) {
+void draw_hold(WINDOW *w, int p, int held) {
     werase(w);
-    if (p != -1)
-        draw_piece(w, 1, 1, p, 0, 0);
+    if (p != -1) {
+        draw_piece(w, 1, 1, p, 0, held);
+    }
     wrefresh(w);
 }
 
@@ -836,7 +837,7 @@ int game(int fd) {
     draw_gui(board, curr, offset_x + 45, offset_y);
 
     draw_queue(queue_win, queue, queue_pos);
-    draw_hold(hold_win, hold);
+    draw_hold(hold_win, hold, hold_used);
     draw_keys(key_win, inputs);
     draw_stats(stat_win, 0, 0, 0, 0);
 
@@ -926,7 +927,7 @@ int game(int fd) {
         // Updates
         draw_board(board_win, board, curr, CLEAR_GOAL - cleared);
         draw_queue(queue_win, queue, queue_pos);
-        draw_hold(hold_win, hold);
+        draw_hold(hold_win, hold, hold_used);
         draw_keys(key_win, inputs);
         draw_stats(stat_win, game_time - start_time, pieces, keys, holds);
 
