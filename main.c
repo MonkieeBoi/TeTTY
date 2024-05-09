@@ -876,24 +876,19 @@ int game(int fd) {
                 break;
         }
 
-        if (inputs[0])
+        if (inputs[0] && rdas_c != DAS - 1) {
             ldas_c++;
-        else
+        } else if (!inputs[0] && ldas_c)
             ldas_c = 0;
-        if (inputs[1])
+
+        if (inputs[1] && ldas_c != DAS - 1) {
             rdas_c++;
-        else
+        } else if (!inputs[1] && rdas_c)
             rdas_c = 0;
 
-        if (ldas_c > DAS && rdas_c == 0)
+        if (ldas_c > DAS && (rdas_c == 0 || rdas_c > ldas_c))
             move_piece(board, curr, 1, -BOARD_WIDTH);
-        if (rdas_c > DAS && ldas_c == 0)
-            move_piece(board, curr, 1, BOARD_WIDTH);
-
-        if (rdas_c > ldas_c && ldas_c > DAS)
-            move_piece(board, curr, 1, -BOARD_WIDTH);
-
-        if (ldas_c > rdas_c && rdas_c > DAS)
+        if (rdas_c > DAS && (ldas_c == 0 || ldas_c > rdas_c))
             move_piece(board, curr, 1, BOARD_WIDTH);
 
         if (inputs[0] && !last_inputs[0])
