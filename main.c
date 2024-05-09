@@ -9,13 +9,14 @@
 #include <unistd.h>
 
 #define BOARD_HEIGHT 20
+#define ARR_HEIGHT 40
 #define BOARD_WIDTH 10
 #define WIDTH 38 + 7 + 1 + BOARD_WIDTH * 2 + 1 + 9
 #define HEIGHT BOARD_HEIGHT + 6
 #define RIGHT_MARGIN 46
 
 #define SPAWN_X 4
-#define SPAWN_Y 0
+#define SPAWN_Y 19
 #define SPAWN_ROT 0
 #define FPS 60
 #define DAS 5
@@ -59,15 +60,10 @@ unsigned char keys2[10] = {
     0x10  // Quit  | q
 };
 
-typedef struct Node {
-    unsigned char row[BOARD_WIDTH];
-    struct Node *next;
-} Node;
-
 typedef struct Piece {
-    unsigned char x;
-    char y;
-    char coords[4][2];
+    int x;
+    int y;
+    int coords[4][2];
     unsigned char type;
     unsigned char rot;
 } Piece;
@@ -271,45 +267,27 @@ int is_a_console(int fd) {
 	return (isatty(fd) && ioctl(fd, KDGKBTYPE, &arg) == 0 && ((arg == KB_101) || (arg == KB_84)));
 }
 
-int count_nodes(Node *n) {
-    int length = 0;
-    while (n != NULL) {
-        n = n->next;
-        length++;
-    }
-    return length;
-}
-
 time_t get_ms() {
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC_RAW, &ts);
     return ((ts.tv_sec * 1000) + (ts.tv_nsec / 1000000));
 }
 
-int check_collide(int board[][BOARD_WIDTH], int height, int x, int y, int type, int rot) {
+int check_collide(int board[ARR_HEIGHT][BOARD_WIDTH], int x, int y, int type, int rot) {
     for (int i = 0; i < 4; i++) {
-        int minoY = y + pieces[type][rot][i][1];
+        int minoY = y - pieces[type][rot][i][1];
         int minoX = x + pieces[type][rot][i][0];
-        if (minoY >= BOARD_HEIGHT
+        if (minoY >= ARR_HEIGHT
           || minoX >= BOARD_WIDTH
           || minoX < 0
-          || (BOARD_HEIGHT - 1 - minoY < height
-              && board[BOARD_HEIGHT - 1 - minoY][minoX]))
+          || minoY < 0
+              || board[minoY][minoX])
             return 1;
     }
     return 0;
 }
 
-void move_piece(Node *n, Piece *p, int h, int amount) {
-    int height = count_nodes(n);
-
-    int board[height][BOARD_WIDTH];
-    for (int i = 0; n != NULL; i++) {
-        for (int j = 0; j < BOARD_WIDTH; j++)
-            board[i][j] = n->row[j];
-        n = n->next;
-    }
-
+void move_piece(int board[ARR_HEIGHT][BOARD_WIDTH], Piece *p, int h, int amount) {
     int collision = 0;
     int last_x = p->x;
     int last_y = p->y;
@@ -319,7 +297,7 @@ void move_piece(Node *n, Piece *p, int h, int amount) {
         int x = p->x + (h ? i : 0);
         int y = p->y + (h ? 0 : i);
 
-        collision = check_collide(board, height, x, y, p->type, p->rot);
+        collision = check_collide(board, x, y, p->type, p->rot);
 
         if (!collision) {
             last_x = x;
@@ -333,11 +311,11 @@ void move_piece(Node *n, Piece *p, int h, int amount) {
 
     for (int i = 0; i < 4; i++) {
         p->coords[i][0] = p->x + pieces[p->type][p->rot][i][0];
-        p->coords[i][1] = p->y + pieces[p->type][p->rot][i][1];
+        p->coords[i][1] = p->y - pieces[p->type][p->rot][i][1];
     }
 }
 
-void spin_piece(Node *n, Piece *p, int spin) {
+void spin_piece(int board[ARR_HEIGHT][BOARD_WIDTH], Piece *p, int spin) {
     // 0 = cw
     // 1 = 180
     // 2 = ccw
@@ -347,27 +325,19 @@ void spin_piece(Node *n, Piece *p, int spin) {
     if (p->type == 3) class = 2;
     p->rot = (p->rot + spin + 1) % 4;
 
-    int height = count_nodes(n);
-    int board[height][BOARD_WIDTH];
-    for (int i = 0; n != NULL; i++) {
-        for (int j = 0; j < BOARD_WIDTH; j++)
-            board[i][j] = n->row[j];
-        n = n->next;
-    }
-
     int collision = 0;
     for (int i = 0; i < 5; i++) {
         int x = p->x + (offsets[class][init_rot][i][0] - offsets[class][p->rot][i][0]);
-        int y = p->y - (offsets[class][init_rot][i][1] - offsets[class][p->rot][i][1]);
+        int y = p->y + (offsets[class][init_rot][i][1] - offsets[class][p->rot][i][1]);
 
         if (class != 2 && spin == 1) {
             x = p->x + (offsets2[class][init_rot][i][0] - offsets2[class][p->rot][i][0]);
-            y = p->y - (offsets2[class][init_rot][i][1] - offsets2[class][p->rot][i][1]);
+            y = p->y + (offsets2[class][init_rot][i][1] - offsets2[class][p->rot][i][1]);
             if (i > 2)
                 break;
         }
 
-        collision = check_collide(board, height, x, y, p->type, p->rot);
+        collision = check_collide(board, x, y, p->type, p->rot);
 
         if (!collision) {
             p->x = x;
@@ -383,12 +353,12 @@ void spin_piece(Node *n, Piece *p, int spin) {
 
     for (int i = 0; i < 4; i++) {
         p->coords[i][0] = p->x + pieces[p->type][p->rot][i][0];
-        p->coords[i][1] = p->y + pieces[p->type][p->rot][i][1];
+        p->coords[i][1] = p->y - pieces[p->type][p->rot][i][1];
     }
 
 }
 
-void draw_gui(Node *n, Piece *p, int x, int y) {
+void draw_gui(int x, int y) {
     for (int i = BOARD_HEIGHT - 1; i >= 0; i--) {
         mvprintw(y + i, x, "█");
         mvprintw(y + i, x + 1 + BOARD_WIDTH * 2, "█");
@@ -410,37 +380,28 @@ void draw_piece(WINDOW *w, int x, int y, int type, int rot, int ghost) {
     }
 }
 
-void draw_board(WINDOW *w, Node *n, Piece *p, int line) {
+void draw_board(WINDOW *w, int board[ARR_HEIGHT][BOARD_WIDTH], Piece *p, int line) {
     werase(w);
 
     int orig_y = p->y;
-    move_piece(n, p, 0, BOARD_HEIGHT - p->y);
+    move_piece(board, p, 0, -p->y);
     int ghost_y = p->y;
     p->y = orig_y;
 
-    int y = BOARD_HEIGHT - 1;
-    line = BOARD_HEIGHT - line - 1;
-
-    while (n != NULL) {
-        for (int i = 0; i < BOARD_WIDTH; i++) {
-            if (n->row[i]) {
-                wattron(w, COLOR_PAIR(n->row[i]));
-                mvwprintw(w, y, 2 * i, "[]");
-                wattroff(w, COLOR_PAIR(n->row[i]));
-            } else if (y == line) {
-                mvwprintw(w, y, 2 * i, "__");
+    for (int i = 0; i < BOARD_HEIGHT; i++) {
+        for (int j = 0; j < BOARD_WIDTH; j++) {
+            if (board[i][j]) {
+                wattron(w, COLOR_PAIR(board[i][j]));
+                mvwprintw(w, BOARD_HEIGHT - 1 - i, 2 * j, "[]");
+                wattroff(w, COLOR_PAIR(board[i][j]));
+            } else if (i == line) {
+                mvwprintw(w, BOARD_HEIGHT - 1 - i, 2 * j, "__");
             }
         }
-        n = n->next;
-        y--;
     }
 
-    for (int i = 0; i < BOARD_WIDTH && y >= line && line > 0; i++) {
-        mvwprintw(w, line, 2 * i, "__");
-    }
-
-    draw_piece(w, p->x, ghost_y, p->type, p->rot, 1);
-    draw_piece(w, p->x, p->y, p->type, p->rot, 0);
+    draw_piece(w, p->x, BOARD_HEIGHT - 1 - ghost_y, p->type, p->rot, 1);
+    draw_piece(w, p->x, BOARD_HEIGHT - 1 - p->y, p->type, p->rot, 0);
     wrefresh(w);
 }
 
@@ -566,21 +527,9 @@ void draw_stats(WINDOW *w, int time, int pieces, int keys, int holds) {
     wrefresh(w);
 }
 
-void lock_piece(Node *n, Piece *p) {
-    int y = BOARD_HEIGHT - 1;
-    for (int i = 3; i >= 0; i--) {
-        while (y > p->coords[i][1]) {
-            if (n->next == NULL) {
-                n->next = malloc(sizeof(Node));
-                n->next->next = NULL;
-                for (int j = 0; j < BOARD_WIDTH; j++)
-                    n->next->row[j] = 0;
-            }
-            n = n->next;
-            y--;
-        }
-        n->row[p->coords[i][0]] = p->type + 1;
-    }
+void lock_piece(int board[ARR_HEIGHT][BOARD_WIDTH], Piece *p) {
+    for (int i = 0; i < 4; i++)
+        board[p->coords[i][1]][p->coords[i][0]] = p->type + 1;
 }
 
 void gen_piece(Piece *p, int type) {
@@ -590,7 +539,7 @@ void gen_piece(Piece *p, int type) {
     p->y = SPAWN_Y;
     for (int i = 0; i < 4; i++) {
         p->coords[i][0] = p->x + pieces[type][0][i][0];
-        p->coords[i][1] = p->y + pieces[type][0][i][1];
+        p->coords[i][1] = p->y - pieces[type][0][i][1];
     }
 }
 
@@ -626,77 +575,38 @@ void queue_init (int queue[]) {
     queue[6] = bag[0];
 }
 
-int clear_lines(Node *n) {
-    Node *head = n;
-    int head_full = 1;
-    n = n->next;
+int clear_lines(int board[ARR_HEIGHT][BOARD_WIDTH]) {
     int cleared = 0;
-
-    // Check head
-    for (int i = 0; i < BOARD_WIDTH && head_full; i++)
-        if (head->row[i] == 0)
-            head_full = 0;
-
-    // Set head to next non-full row
-    while (head_full && n != NULL) {
-        int full = 1;
-        // Check if current row full
-        for (int i = 0; full && i < BOARD_WIDTH; i++)
-            if (n->row[i] == 0)
-                full = 0;
-        // Copy row to head
-        for (int i = 0; !full && i < BOARD_WIDTH; i++)
-            head->row[i] = n->row[i];
-        if (!full) {
-            head_full = 0;
-            head->next = n->next;
+    for (int i = 0; i < ARR_HEIGHT; i++) {
+        int clear = 1;
+        for (int j = 0; j < BOARD_WIDTH; j++) {
+            if (!board[i][j]) {
+                clear = 0;
+                break;
+            }
         }
-        Node *tmp = n;
-        n = n->next;
-        free(tmp);
-        cleared++;
-    }
-
-    cleared += head_full;
-
-    // Whole board full
-    if (head_full) {
-        for (int i = 0; i < BOARD_WIDTH; i++)
-            head->row[i] = 0;
-        head->next = NULL;
-    }
-
-    // Last non-full row
-    Node *last = head;
-    while (n != NULL) {
-        int full = 1;
-        for (int i = 0; full && i < BOARD_WIDTH; i++)
-            if (n->row[i] == 0)
-                full = 0;
-        if (full) {
-            Node *tmp = n;
-            n = n->next;
-            free(tmp);
+        if (clear) {
             cleared++;
-        } else {
-            last->next = n;
-            last = n;
-            n = n->next;
+            continue;
+        } if (cleared) {
+            for (int j = 0; j < BOARD_WIDTH; j++) {
+                board[i-cleared][j] = board[i][j];
+                if (i >= ARR_HEIGHT - cleared)
+                    board[i][j] = 0;
+                board[ARR_HEIGHT-1][j] = 0;
+            }
         }
     }
-    last->next = NULL;
-
     return cleared;
 }
 
-void wash_board(Node *n) {
-    while (n != NULL) {
-        for (int i = 0; i < BOARD_WIDTH; i++) {
-            if (n->row[i] != 0) {
-                n->row[i] = 11;
+void wash_board(int board[ARR_HEIGHT][BOARD_WIDTH]) {
+    for (int i = 0; i < BOARD_HEIGHT; i++) {
+        for (int j = 0; j < BOARD_WIDTH; j++) {
+            if (board[i][j]) {
+                board[i][j] = 11;
             }
         }
-        n = n->next;
     }
 }
 
@@ -778,15 +688,6 @@ void get_inputs(int fd, int inputs[]) {
     }
 }
 
-void free_nodes(Node *n) {
-    Node *last;
-    while (n != NULL) {
-        last = n;
-        n = n->next;
-        free(last);
-    }
-}
-
 int game(int fd) {
     if (COLS < WIDTH || LINES < HEIGHT) {
         return 2;
@@ -808,12 +709,11 @@ int game(int fd) {
     WINDOW *key_win = newwin(7, 38, offset_y + 3, offset_x);
     WINDOW *stat_win = newwin(5, 14, offset_y + BOARD_HEIGHT + 1, offset_x + RIGHT_MARGIN + 3);
 
-    Node *board = malloc(sizeof(Node));
-    board->next = NULL;
     Piece *curr = malloc(sizeof(Piece));
-
-    for (int i = 0; i < BOARD_WIDTH; i++)
-        board->row[i] = 0;
+    int board[ARR_HEIGHT][BOARD_WIDTH];
+    for (int i = 0; i < ARR_HEIGHT; i++)
+        for (int j = 0; j < BOARD_WIDTH; j++)
+            board[i][j] = 0;
 
     int hold = -1;
     int hold_used = 0;
@@ -834,7 +734,7 @@ int game(int fd) {
     int cleared = 0;
 
     mvprintw(offset_y + 11, offset_x + 53, "READY");
-    draw_gui(board, curr, offset_x + 45, offset_y);
+    draw_gui(offset_x + 45, offset_y);
 
     draw_queue(queue_win, queue, queue_pos);
     draw_hold(hold_win, hold, hold_used);
@@ -865,7 +765,7 @@ int game(int fd) {
         if (inputs[8] || inputs[9])
             break;
         if (inputs[3] && !last_inputs[3]) {
-            move_piece(board, curr, 0, BOARD_HEIGHT - curr->y);
+            move_piece(board, curr, 0, -curr->y);
             lock_piece(board, curr);
             queue_pos = queue_pop(curr, queue, queue_pos);
             cleared += clear_lines(board);
@@ -897,7 +797,7 @@ int game(int fd) {
             move_piece(board, curr, 1, 1);
 
         if (inputs[2])
-            move_piece(board, curr, 0, BOARD_HEIGHT - curr->y);
+            move_piece(board, curr, 0, -curr->y);
         if (inputs[4] && !last_inputs[4])
             spin_piece(board, curr, 2);
         if (inputs[5] && !last_inputs[5])
@@ -928,7 +828,7 @@ int game(int fd) {
 
         // Gravity Movement
         grav_c += grav;
-        move_piece(board, curr, 0, (int) grav_c);
+        move_piece(board, curr, 0, (int) -grav_c);
         grav_c = grav_c - (int) grav_c;
 
         usleep(1000000 / FPS - (get_ms() - game_time));
@@ -948,7 +848,6 @@ int game(int fd) {
         }
     }
 
-    free_nodes(board);
     free(curr);
     delwin(board_win);
     delwin(queue_win);
