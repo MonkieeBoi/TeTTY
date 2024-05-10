@@ -11,19 +11,17 @@ meaning SRS, hold, harddrop and all that good stuff.
 
 - [X] Come up with a name
 - [X] Board
-    - [X] Draw using ncurses
 - [ ] Handle pieces
     - [X] Define
     - [X] Spawn
     - [X] Draw (probably with ncurses)
-    - [X] Move
+    - [ ] Move
         - [X] DAS
-        - [X] ARR
+        - [ ] ARR
         - [X] Gravity
     - [X] Rotate (SRS)
     - [X] Harddrop
-    - [ ] Lock
-        - [ ] Delay
+    - [ ] Lock Delay
 - [X] Add hold
 - [X] Add 7-bag
 - [X] Handle line clearing
