@@ -5,7 +5,7 @@ meaning SRS, hold, harddrop and all that good stuff.
 
 # Showcase
 
-[demo.mp4](https://github.com/MonkieeBoi/TeTTY/assets/53400613/a9f625c1-e48c-4fdf-95bb-2ccc93c20d4f)
+[demo.mp4](https://github.com/MonkieeBoi/TeTTY/assets/53400613/586f96bd-8d89-4f3a-8559-389a4d78d1ff)
 
 # Todo
 
