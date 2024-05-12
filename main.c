@@ -2,6 +2,7 @@
 #include <fcntl.h>
 #include <linux/kd.h>
 #include <locale.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <sys/ioctl.h>
 #include <termios.h>
@@ -21,6 +22,20 @@
 #define FPS 60
 #define DAS 5
 #define CLEAR_GOAL 40
+#define QUEUE_SZ 5
+#define BAG_SZ 7
+#define KEYS 10
+
+#define LEFT 0
+#define RIGHT 1
+#define SD 2
+#define HD 3
+#define CCW 4
+#define CW 5
+#define FLIP 6
+#define HOLD 7
+#define RESET 8
+#define QUIT 9
 
 #define COLOR_ORANGE 8
 
@@ -33,7 +48,7 @@ enum Parser {
 };
 
 // extended keyboard protocol keycodes
-unsigned int keys[10] = {
+const uint32_t keys[KEYS] = {
     KEY_LEFT,  // Left  | ←
     KEY_RIGHT, // Right | →
     KEY_DOWN,  // SD    | ↓
@@ -47,7 +62,7 @@ unsigned int keys[10] = {
 };
 
 // scancodes
-unsigned char keys2[10] = {
+const uint8_t keys2[KEYS] = {
     0x4b, // Left  | ←
     0x4d, // Right | →
     0x50, // SD    | ↓
@@ -61,17 +76,17 @@ unsigned char keys2[10] = {
 };
 
 typedef struct Piece {
-    int x;
-    int y;
-    int coords[4][2];
-    unsigned char type;
-    unsigned char rot;
+    int8_t x;
+    int8_t y;
+    int8_t coords[4][2];
+    uint8_t type;
+    uint8_t rot;
 } Piece;
 
 // TODO: figure out better way to store this
 // Defined by offset from the piece center
 // 7 pieces, 4 rotations, 3 coordinate pairs
-const int pieces[7][4][4][2] = {
+const int8_t pieces[BAG_SZ][4][4][2] = {
     // I
     {
         {{-1, 0}, {0, 0}, {1, 0}, {2, 0}},
@@ -192,7 +207,7 @@ const int pieces[7][4][4][2] = {
 };
 
 // 3 offset 'classes', 4 rotation states, 5 x & y offsets
-int offsets[3][4][5][2] = {
+const int8_t offsets[3][4][5][2] = {
     // J, L, S, T, Z
     {
         // Spawn
@@ -229,7 +244,7 @@ int offsets[3][4][5][2] = {
 };
 
 // 180 offset table
-int offsets2[2][4][2][2] = {
+const int8_t offsets2[2][4][2][2] = {
     {
         // Spawn
         {{ 0, 0}, { 0, 1}},
@@ -346,7 +361,7 @@ time_t get_ms() {
     return ((ts.tv_sec * 1000) + (ts.tv_nsec / 1000000));
 }
 
-int check_collide(int board[ARR_HEIGHT][BOARD_WIDTH], int x, int y, int type, int rot) {
+int8_t check_collide(int8_t board[ARR_HEIGHT][BOARD_WIDTH], int8_t x, int8_t y, int8_t type, int8_t rot) {
     for (int i = 0; i < 4; i++) {
         int minoY = y - pieces[type][rot][i][1];
         int minoX = x + pieces[type][rot][i][0];
@@ -360,15 +375,15 @@ int check_collide(int board[ARR_HEIGHT][BOARD_WIDTH], int x, int y, int type, in
     return 0;
 }
 
-void move_piece(int board[ARR_HEIGHT][BOARD_WIDTH], Piece *p, int h, int amount) {
-    int collision = 0;
-    int last_x = p->x;
-    int last_y = p->y;
-    int step = (amount < 0) ? -1 : 1;
+void move_piece(int8_t board[ARR_HEIGHT][BOARD_WIDTH], Piece *p, int8_t h, int8_t amount) {
+    int8_t collision = 0;
+    int8_t last_x = p->x;
+    int8_t last_y = p->y;
+    int8_t step = (amount < 0) ? -1 : 1;
 
-    for (int i = step; i != amount + step; i += step) {
-        int x = p->x + (h ? i : 0);
-        int y = p->y + (h ? 0 : i);
+    for (int8_t i = step; i != amount + step; i += step) {
+        int8_t x = p->x + (h ? i : 0);
+        int8_t y = p->y + (h ? 0 : i);
 
         collision = check_collide(board, x, y, p->type, p->rot);
 
@@ -382,26 +397,26 @@ void move_piece(int board[ARR_HEIGHT][BOARD_WIDTH], Piece *p, int h, int amount)
     p->x = last_x;
     p->y = last_y;
 
-    for (int i = 0; i < 4; i++) {
+    for (int8_t i = 0; i < 4; i++) {
         p->coords[i][0] = p->x + pieces[p->type][p->rot][i][0];
         p->coords[i][1] = p->y - pieces[p->type][p->rot][i][1];
     }
 }
 
-void spin_piece(int board[ARR_HEIGHT][BOARD_WIDTH], Piece *p, int spin) {
+void spin_piece(int8_t board[ARR_HEIGHT][BOARD_WIDTH], Piece *p, int8_t spin) {
     // 0 = cw
     // 1 = 180
     // 2 = ccw
-    int init_rot = p->rot;
-    int class = 0;
+    int8_t init_rot = p->rot;
+    int8_t class = 0;
     if (p->type == 0) class = 1;
     if (p->type == 3) class = 2;
     p->rot = (p->rot + spin + 1) % 4;
 
-    int collision = 0;
-    for (int i = 0; i < 5; i++) {
-        int x = p->x + (offsets[class][init_rot][i][0] - offsets[class][p->rot][i][0]);
-        int y = p->y + (offsets[class][init_rot][i][1] - offsets[class][p->rot][i][1]);
+    int8_t collision = 0;
+    for (int8_t i = 0; i < 5; i++) {
+        int8_t x = p->x + (offsets[class][init_rot][i][0] - offsets[class][p->rot][i][0]);
+        int8_t y = p->y + (offsets[class][init_rot][i][1] - offsets[class][p->rot][i][1]);
 
         if (class != 2 && spin == 1) {
             x = p->x + (offsets2[class][init_rot][i][0] - offsets2[class][p->rot][i][0]);
@@ -424,25 +439,25 @@ void spin_piece(int board[ARR_HEIGHT][BOARD_WIDTH], Piece *p, int spin) {
         return;
     }
 
-    for (int i = 0; i < 4; i++) {
+    for (int8_t i = 0; i < 4; i++) {
         p->coords[i][0] = p->x + pieces[p->type][p->rot][i][0];
         p->coords[i][1] = p->y - pieces[p->type][p->rot][i][1];
     }
 
 }
 
-void draw_gui(int x, int y) {
-    for (int i = BOARD_HEIGHT - 1; i >= 0; i--) {
+void draw_gui(int8_t x, int8_t y) {
+    for (int8_t i = BOARD_HEIGHT - 1; i >= 0; i--) {
         mvprintw(y + i, x, "█");
         mvprintw(y + i, x + 1 + BOARD_WIDTH * 2, "█");
     }
-    for (int i = 0; i < BOARD_WIDTH + 1; i++)
+    for (int8_t i = 0; i < BOARD_WIDTH + 1; i++)
         mvprintw(y + BOARD_HEIGHT, x + i * 2, "▀▀");
     refresh();
 }
 
-void draw_piece(WINDOW *w, int x, int y, int type, int rot, int ghost) {
-    for (int i = 0; i < 4; i++) {
+void draw_piece(WINDOW *w, int8_t x, int8_t y, int8_t type, int8_t rot, int8_t ghost) {
+    for (int8_t i = 0; i < 4; i++) {
         wattron(w, COLOR_PAIR(ghost ? 8 : (type + 1)));
         mvwprintw(w,
                   y + pieces[type][rot][i][1],
@@ -453,16 +468,16 @@ void draw_piece(WINDOW *w, int x, int y, int type, int rot, int ghost) {
     }
 }
 
-void draw_board(WINDOW *w, int board[ARR_HEIGHT][BOARD_WIDTH], Piece *p, int line) {
+void draw_board(WINDOW *w, int8_t board[ARR_HEIGHT][BOARD_WIDTH], Piece *p, int8_t line) {
     werase(w);
 
-    int orig_y = p->y;
+    int8_t orig_y = p->y;
     move_piece(board, p, 0, -p->y);
-    int ghost_y = p->y;
+    int8_t ghost_y = p->y;
     p->y = orig_y;
 
-    for (int i = 0; i < BOARD_HEIGHT; i++) {
-        for (int j = 0; j < BOARD_WIDTH; j++) {
+    for (int8_t i = 0; i < BOARD_HEIGHT; i++) {
+        for (int8_t j = 0; j < BOARD_WIDTH; j++) {
             if (board[i][j]) {
                 wattron(w, COLOR_PAIR(board[i][j]));
                 mvwprintw(w, BOARD_HEIGHT - 1 - i, 2 * j, "[]");
@@ -478,16 +493,16 @@ void draw_board(WINDOW *w, int board[ARR_HEIGHT][BOARD_WIDTH], Piece *p, int lin
     wrefresh(w);
 }
 
-void draw_queue(WINDOW *w, int queue[], int queue_pos) {
+void draw_queue(WINDOW *w, int8_t queue[], int8_t queue_pos) {
     werase(w);
-    for (int i = 0; i < 5; i++) {
+    for (int8_t i = 0; i < QUEUE_SZ; i++) {
         draw_piece(w, 1, 2 + 3 * i, queue[queue_pos], 0, 0);
-        queue_pos = (queue_pos + 1) % 7;
+        queue_pos = (queue_pos + 1) % BAG_SZ;
     }
     wrefresh(w);
 }
 
-void draw_hold(WINDOW *w, int p, int held) {
+void draw_hold(WINDOW *w, int8_t p, int8_t held) {
     werase(w);
     if (p != -1) {
         draw_piece(w, 1, 1, p, 0, held);
@@ -495,7 +510,7 @@ void draw_hold(WINDOW *w, int p, int held) {
     wrefresh(w);
 }
 
-void draw_keys(WINDOW *w, int inputs[]) {
+void draw_keys(WINDOW *w, int8_t inputs[]) {
     werase(w);
 
     wattron(w, COLOR_PAIR(11));
@@ -517,63 +532,63 @@ void draw_keys(WINDOW *w, int inputs[]) {
     wattroff(w, COLOR_PAIR(10));
 
     wattron(w, COLOR_PAIR(8));
-    if (inputs[0]) {
+    if (inputs[LEFT]) {
         mvwprintw(w, 4, 23, "▄▄▄▄▄");
         mvwprintw(w, 6, 23, "▀▀▀▀▀");
     }
-    if (inputs[1]) {
+    if (inputs[RIGHT]) {
         mvwprintw(w, 4, 33, "▄▄▄▄▄");
         mvwprintw(w, 6, 33, "▀▀▀▀▀");
     }
-    if (inputs[2]) {
+    if (inputs[SD]) {
         mvwprintw(w, 4, 28, "▄▄▄▄▄");
         mvwprintw(w, 6, 28, "▀▀▀▀▀");
     }
-    if (inputs[3]) {
+    if (inputs[HD]) {
         mvwprintw(w, 4, 15, "▄▄▄▄▄");
         mvwprintw(w, 6, 15, "▀▀▀▀▀");
     }
-    if (inputs[4]) {
+    if (inputs[CCW]) {
         mvwprintw(w, 0, 5, "▄▄▄▄▄");
         mvwprintw(w, 2, 5, "▀▀▀▀▀");
     }
-    if (inputs[5]) {
+    if (inputs[CW]) {
         mvwprintw(w, 0, 10, "▄▄▄▄▄");
         mvwprintw(w, 2, 10, "▀▀▀▀▀");
     }
-    if (inputs[6]) {
+    if (inputs[FLIP]) {
         mvwprintw(w, 0, 15, "▄▄▄▄▄");
         mvwprintw(w, 2, 15, "▀▀▀▀▀");
     }
-    if (inputs[7]) {
+    if (inputs[HOLD]) {
         mvwprintw(w, 2, 0, "▄▄▄▄▄");
         mvwprintw(w, 4, 0, "▀▀▀▀▀");
     }
     wattroff(w, COLOR_PAIR(8));
 
     wattron(w, COLOR_PAIR(9));
-    if (inputs[0]) {
+    if (inputs[LEFT]) {
         mvwprintw(w, 5, 23, "  ←  ");
     }
-    if (inputs[1]) {
+    if (inputs[RIGHT]) {
         mvwprintw(w, 5, 33, "  →  ");
     }
-    if (inputs[2]) {
+    if (inputs[SD]) {
         mvwprintw(w, 5, 28, "  ↓  ");
     }
-    if (inputs[3]) {
+    if (inputs[HD]) {
         mvwprintw(w, 5, 15, "  ▼  ");
     }
-    if (inputs[4]) {
+    if (inputs[CCW]) {
         mvwprintw(w, 1, 5, "  (  ");
     }
-    if (inputs[5]) {
+    if (inputs[CW]) {
         mvwprintw(w, 1, 10, "  )  ");
     }
-    if (inputs[6]) {
+    if (inputs[FLIP]) {
         mvwprintw(w, 1, 15, "  /  ");
     }
-    if (inputs[7]) {
+    if (inputs[HOLD]) {
         mvwprintw(w, 3, 0, "  ↕  ");
     }
     wattroff(w, COLOR_PAIR(9));
@@ -600,59 +615,61 @@ void draw_stats(WINDOW *w, int time, int pieces, int keys, int holds) {
     wrefresh(w);
 }
 
-void lock_piece(int board[ARR_HEIGHT][BOARD_WIDTH], Piece *p) {
-    for (int i = 0; i < 4; i++)
+void lock_piece(int8_t board[ARR_HEIGHT][BOARD_WIDTH], Piece *p) {
+    for (int8_t i = 0; i < 4; i++)
         board[p->coords[i][1]][p->coords[i][0]] = p->type + 1;
 }
 
-void gen_piece(Piece *p, int type) {
+void gen_piece(Piece *p, int8_t type) {
     p->type = type;
     p->rot = SPAWN_ROT;
     p->x = SPAWN_X;
     p->y = SPAWN_Y;
-    for (int i = 0; i < 4; i++) {
+    for (int8_t i = 0; i < 4; i++) {
         p->coords[i][0] = p->x + pieces[type][0][i][0];
         p->coords[i][1] = p->y - pieces[type][0][i][1];
     }
 }
 
-int queue_pop(Piece *p, int queue[], int queue_pos) {
+int8_t queue_pop(Piece *p, int8_t queue[], int8_t queue_pos) {
     gen_piece(p, queue[queue_pos]);
 
-    int rand = random() % (7 - queue_pos);
-    int used[7] = {0};
-    int bag[7];
-    int bag_pos = 0;
+    int8_t rand = random() % (BAG_SZ - queue_pos);
+    int8_t used[BAG_SZ] = {0};
+    int8_t bag[BAG_SZ];
+    int8_t bag_pos = 0;
 
-    for (int i = 0; i < queue_pos; i++)
+    for (int8_t i = 0; i < queue_pos; i++)
         used[queue[i]] = 1;
 
-    for (int i = 0; i < 7; i++)
+    for (int8_t i = 0; i < BAG_SZ; i++)
         if (!used[i])
             bag[bag_pos++] = i;
 
     queue[queue_pos] = bag[rand];
-    return (queue_pos + 1) % 7;
+    return (queue_pos + 1) % BAG_SZ;
 
 }
 
-void queue_init (int queue[]) {
-    int bag[7] = {0, 1, 2, 3, 4, 5, 6};
+void queue_init (int8_t queue[]) {
+    int8_t bag[BAG_SZ];
+    for (int8_t i = 0; i < BAG_SZ; i++)
+        bag[i] = i;
 
-    for (int i = 6; i > 0; i--) {
-        int rand = random() % (i + 1);
-        queue[6 - i] = bag[rand];
+    for (int8_t i = BAG_SZ - 1; i > 0; i--) {
+        int8_t rand = random() % (i + 1);
+        queue[BAG_SZ - 1 - i] = bag[rand];
         bag[rand] = bag[i];
     }
 
-    queue[6] = bag[0];
+    queue[BAG_SZ - 1] = bag[0];
 }
 
-int clear_lines(int board[ARR_HEIGHT][BOARD_WIDTH]) {
-    int cleared = 0;
-    for (int i = 0; i < ARR_HEIGHT; i++) {
-        int clear = 1;
-        for (int j = 0; j < BOARD_WIDTH; j++) {
+int8_t clear_lines(int8_t board[ARR_HEIGHT][BOARD_WIDTH]) {
+    int8_t cleared = 0;
+    for (int8_t i = 0; i < ARR_HEIGHT; i++) {
+        int8_t clear = 1;
+        for (int8_t j = 0; j < BOARD_WIDTH; j++) {
             if (!board[i][j]) {
                 clear = 0;
                 break;
@@ -662,7 +679,7 @@ int clear_lines(int board[ARR_HEIGHT][BOARD_WIDTH]) {
             cleared++;
             continue;
         } if (cleared) {
-            for (int j = 0; j < BOARD_WIDTH; j++) {
+            for (int8_t j = 0; j < BOARD_WIDTH; j++) {
                 board[i-cleared][j] = board[i][j];
                 if (i >= ARR_HEIGHT - cleared)
                     board[i][j] = 0;
@@ -673,9 +690,9 @@ int clear_lines(int board[ARR_HEIGHT][BOARD_WIDTH]) {
     return cleared;
 }
 
-void wash_board(int board[ARR_HEIGHT][BOARD_WIDTH]) {
-    for (int i = 0; i < BOARD_HEIGHT; i++) {
-        for (int j = 0; j < BOARD_WIDTH; j++) {
+void wash_board(int8_t board[ARR_HEIGHT][BOARD_WIDTH]) {
+    for (int8_t i = 0; i < BOARD_HEIGHT; i++) {
+        for (int8_t j = 0; j < BOARD_WIDTH; j++) {
             if (board[i][j]) {
                 board[i][j] = 11;
             }
@@ -683,13 +700,13 @@ void wash_board(int board[ARR_HEIGHT][BOARD_WIDTH]) {
     }
 }
 
-void get_inputs(int fd, int inputs[]) {
+void get_inputs(int fd, int8_t inputs[]) {
     // Using extended keyboard protocol
     if (fd == -1) {
         char c;
         enum Parser state = INVALID;
         int key = 0;
-        int pressed = 0;
+        int8_t pressed = 0;
         while ((c = getch()) != ERR) {
             if (c == 27) {
                 key = 0;
@@ -732,7 +749,7 @@ void get_inputs(int fd, int inputs[]) {
                                 break;
                         }
                     }
-                    for (int i = 0; i < 10; i++) {
+                    for (int8_t i = 0; i < KEYS; i++) {
                         if (keys[i] == key) {
                             inputs[i] = pressed;
                         }
@@ -749,7 +766,7 @@ void get_inputs(int fd, int inputs[]) {
         ssize_t n = read(fd, buf, sizeof(buf));
 
         for (ssize_t i = 0; i < n; i++) {
-            for (int j = 0; j < 10; j++) {
+            for (int8_t j = 0; j < KEYS; j++) {
                 if (keys2[j] == buf[i]) {
                     inputs[j] = 1;
                     continue;
@@ -761,7 +778,7 @@ void get_inputs(int fd, int inputs[]) {
     }
 }
 
-int game(int fd) {
+int8_t game(int fd) {
     if (COLS < WIDTH || LINES < HEIGHT) {
         return 2;
     }
@@ -783,23 +800,23 @@ int game(int fd) {
     WINDOW *stat_win = newwin(5, 14, offset_y + BOARD_HEIGHT + 1, offset_x + RIGHT_MARGIN + 3);
 
     Piece *curr = malloc(sizeof(Piece));
-    int board[ARR_HEIGHT][BOARD_WIDTH];
-    for (int i = 0; i < ARR_HEIGHT; i++)
-        for (int j = 0; j < BOARD_WIDTH; j++)
+    int8_t board[ARR_HEIGHT][BOARD_WIDTH];
+    for (int8_t i = 0; i < ARR_HEIGHT; i++)
+        for (int8_t j = 0; j < BOARD_WIDTH; j++)
             board[i][j] = 0;
 
-    int hold = -1;
-    int hold_used = 0;
-    int queue[7];
+    int8_t hold = -1;
+    int8_t hold_used = 0;
+    int8_t queue[BAG_SZ];
     queue_init(queue);
-    int queue_pos = 0;
-    int inputs[10] = {0};
-    int last_inputs[10] = {0};
+    int8_t queue_pos = 0;
+    int8_t inputs[KEYS] = {0};
+    int8_t last_inputs[KEYS] = {0};
 
     float grav = 0.02;
     float grav_c = 0;
-    int ldas_c = 0;
-    int rdas_c = 0;
+    int8_t ldas_c = 0;
+    int8_t rdas_c = 0;
 
     int pieces = 0;
     int holds = 0;
@@ -827,17 +844,17 @@ int game(int fd) {
     // Game Loop
     while (1) {
         game_time = get_ms();
-        for (int i = 0; i < 10; i++)
+        for (int8_t i = 0; i < KEYS; i++)
             last_inputs[i] = inputs[i];
         get_inputs(fd, inputs);
 
-        for (int i = 0; i < 8; i++) {
+        for (int8_t i = 0; i < 8; i++) {
             keys += inputs[i] && !last_inputs[i];
         }
 
-        if (inputs[8] || inputs[9])
+        if (inputs[RESET] || inputs[QUIT])
             break;
-        if (inputs[3] && !last_inputs[3]) {
+        if (inputs[HD] && !last_inputs[HD]) {
             move_piece(board, curr, 0, -curr->y);
             lock_piece(board, curr);
             queue_pos = queue_pop(curr, queue, queue_pos);
@@ -849,14 +866,14 @@ int game(int fd) {
                 break;
         }
 
-        if (inputs[0] && rdas_c != DAS - 1) {
+        if (inputs[LEFT] && rdas_c != DAS - 1) {
             ldas_c++;
-        } else if (!inputs[0] && ldas_c)
+        } else if (!inputs[LEFT] && ldas_c)
             ldas_c = 0;
 
-        if (inputs[1] && ldas_c != DAS - 1) {
+        if (inputs[RIGHT] && ldas_c != DAS - 1) {
             rdas_c++;
-        } else if (!inputs[1] && rdas_c)
+        } else if (!inputs[RIGHT] && rdas_c)
             rdas_c = 0;
 
         if (ldas_c > DAS && (rdas_c == 0 || rdas_c > ldas_c))
@@ -864,26 +881,26 @@ int game(int fd) {
         if (rdas_c > DAS && (ldas_c == 0 || ldas_c > rdas_c))
             move_piece(board, curr, 1, BOARD_WIDTH);
 
-        if (inputs[0] && !last_inputs[0])
+        if (inputs[LEFT] && !last_inputs[LEFT])
             move_piece(board, curr, 1, -1);
-        if (inputs[1] && !last_inputs[1])
+        if (inputs[RIGHT] && !last_inputs[RIGHT])
             move_piece(board, curr, 1, 1);
 
-        if (inputs[2])
+        if (inputs[SD])
             move_piece(board, curr, 0, -curr->y);
-        if (inputs[4] && !last_inputs[4])
+        if (inputs[CCW] && !last_inputs[CCW])
             spin_piece(board, curr, 2);
-        if (inputs[5] && !last_inputs[5])
+        if (inputs[CW] && !last_inputs[CW])
             spin_piece(board, curr, 0);
-        if (inputs[6] && !last_inputs[6])
+        if (inputs[FLIP] && !last_inputs[FLIP])
             spin_piece(board, curr, 1);
-        if (inputs[7] && !last_inputs[7]) {
+        if (inputs[HOLD] && !last_inputs[HOLD]) {
             if (hold == -1) {
                 hold = curr->type;
                 queue_pos = queue_pop(curr, queue, queue_pos);
                 holds++;
             } else if (!hold_used) {
-                int tmp = hold;
+                int8_t tmp = hold;
                 hold = curr->type;
                 gen_piece(curr, tmp);
                 holds++;
@@ -914,7 +931,7 @@ int game(int fd) {
         draw_stats(stat_win, game_time - start_time, pieces, keys, holds);
         while (1) {
             get_inputs(fd, inputs);
-            if (inputs[8] || inputs[9])
+            if (inputs[RESET] || inputs[QUIT])
                 break;
             draw_keys(key_win, inputs);
             usleep(1000000 / FPS);
@@ -928,7 +945,7 @@ int game(int fd) {
     delwin(key_win);
     clear();
 
-    return inputs[9];
+    return inputs[QUIT];
 }
 
 int main(int argc, char **argv) {
@@ -955,7 +972,7 @@ int main(int argc, char **argv) {
     }
 
     // Main loop
-    int status = 0;
+    int8_t status = 0;
     while (!(status = game(fd)));
 
     // Cleanup extkeys
