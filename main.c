@@ -253,18 +253,91 @@ int offsets2[2][4][2][2] = {
 };
 
 static const char *conspath[] = {
-	"/proc/self/fd/0",
-	"/dev/tty",
-	"/dev/tty0",
-	"/dev/vc/0",
-	"/dev/systty",
-	"/dev/console",
-	NULL
+    "/proc/self/fd/0",
+    "/dev/tty",
+    "/dev/tty0",
+    "/dev/vc/0",
+    "/dev/systty",
+    "/dev/console",
+    NULL
 };
 
 int is_a_console(int fd) {
-	char arg = 0;
-	return (isatty(fd) && ioctl(fd, KDGKBTYPE, &arg) == 0 && ((arg == KB_101) || (arg == KB_84)));
+    char arg = 0;
+    return (isatty(fd) && ioctl(fd, KDGKBTYPE, &arg) == 0 && ((arg == KB_101) || (arg == KB_84)));
+}
+
+int getfd(struct termios* old, struct termios* new) {
+    int fd = 0;
+
+    for (int i = 0; conspath[i]; i++) {
+        fd = open(conspath[i], O_RDONLY | O_NOCTTY | O_NONBLOCK);
+        if (is_a_console(fd))
+            break;
+        close(fd);
+    }
+
+    if (fd < 0) {
+        fprintf(stderr, "no fd\n");
+        return -1;
+    }
+
+    if (tcgetattr(fd, old) == -1 || tcgetattr(fd, new) == -1) {
+        fprintf(stderr, "tcgetattr error\n");
+        return -1;
+    }
+
+    new->c_lflag &= ~((tcflag_t)(ICANON | ECHO | ISIG));
+    new->c_iflag     = 0;
+    new->c_cc[VMIN]  = 0;
+    new->c_cc[VTIME] = 0;
+
+    if (tcsetattr(fd, TCSAFLUSH, new) == -1) {
+        fprintf(stderr, "tcsetattr error\n");
+        return -1;
+    }
+
+    if (ioctl(fd, KDSKBMODE, K_RAW)) {
+        fprintf(stderr, "ioctl KDSKBMODE error\n");
+        return -1;
+    }
+
+    return fd;
+}
+
+void init_curses () {
+    initscr();
+    raw();
+    curs_set(0);
+    start_color();
+    noecho();
+    use_default_colors();
+    nodelay(stdscr, 1);
+
+    init_pair(1,  COLOR_CYAN,    COLOR_CYAN);
+    init_pair(2,  COLOR_BLUE,    COLOR_BLUE);
+    init_pair(3,  COLOR_WHITE,   COLOR_WHITE);
+    init_pair(4,  COLOR_YELLOW,  COLOR_YELLOW);
+    init_pair(5,  COLOR_GREEN,   COLOR_GREEN);
+    init_pair(6,  COLOR_MAGENTA, COLOR_MAGENTA);
+    init_pair(7,  COLOR_RED,     COLOR_RED);
+    init_pair(8,  COLOR_WHITE,   -1);
+    init_pair(9,  COLOR_BLUE,    COLOR_WHITE);
+    init_pair(10, COLOR_WHITE,   COLOR_BLUE);
+    init_pair(11, COLOR_BLUE,    -1);
+    init_pair(12, COLOR_BLACK,   COLOR_CYAN);
+    init_pair(13, COLOR_BLACK,   COLOR_BLUE);
+    init_pair(14, COLOR_BLACK,   COLOR_WHITE);
+    init_pair(15, COLOR_BLACK,   COLOR_YELLOW);
+    init_pair(16, COLOR_BLACK,   COLOR_GREEN);
+    init_pair(17, COLOR_BLACK,   COLOR_MAGENTA);
+    init_pair(18, COLOR_BLACK,   COLOR_RED);
+
+    // Make orange if supported
+    if (COLOR_PAIRS > 8) {
+        init_color(COLOR_ORANGE, 816, 529, 439);
+        init_pair(3,  COLOR_ORANGE,  COLOR_ORANGE);
+    }
 }
 
 time_t get_ms() {
@@ -866,94 +939,40 @@ int main(int argc, char **argv) {
     struct termios new;
     int fd = -1;
 
-    // Setup
+    // Setup fd to read from console
     if (argc < 2) {
-        for (int i = 0; conspath[i]; i++) {
-            fd = open(conspath[i], O_RDONLY | O_NOCTTY | O_NONBLOCK);
-            if (is_a_console(fd))
-                break;
-            close(fd);
-        }
-
+        fd = getfd(&old, &new);
         if (fd < 0) {
-            printf("no fd\n");
-            return 1;
-        }
-
-        if (tcgetattr(fd, &old) == -1 || tcgetattr(fd, &new) == -1) {
-            printf("tcgetattr error\n");
-            return 1;
-        }
-
-        new.c_lflag &= ~((tcflag_t)(ICANON | ECHO | ISIG));
-        new.c_iflag     = 0;
-        new.c_cc[VMIN]  = 0;
-        new.c_cc[VTIME] = 0;
-
-        if (tcsetattr(fd, TCSAFLUSH, &new) == -1) {
-            printf("tcsetattr error\n");
-            return 1;
-        }
-
-        if (ioctl(fd, KDSKBMODE, K_RAW)) {
-            printf("ioctl KDSKBMODE error\n");
             return 1;
         }
     }
 
-    initscr();
-    raw();
-    curs_set(0);
-    start_color();
-    noecho();
-    use_default_colors();
-    nodelay(stdscr, 1);
+    init_curses();
 
-    init_pair(1,  COLOR_CYAN,    COLOR_CYAN);
-    init_pair(2,  COLOR_BLUE,    COLOR_BLUE);
-    init_pair(3,  COLOR_WHITE,   COLOR_WHITE);
-    init_pair(4,  COLOR_YELLOW,  COLOR_YELLOW);
-    init_pair(5,  COLOR_GREEN,   COLOR_GREEN);
-    init_pair(6,  COLOR_MAGENTA, COLOR_MAGENTA);
-    init_pair(7,  COLOR_RED,     COLOR_RED);
-    init_pair(8,  COLOR_WHITE,   -1);
-    init_pair(9,  COLOR_BLUE,    COLOR_WHITE);
-    init_pair(10, COLOR_WHITE,   COLOR_BLUE);
-    init_pair(11, COLOR_BLUE,    -1);
-    init_pair(12, COLOR_BLACK,   COLOR_CYAN);
-    init_pair(13, COLOR_BLACK,   COLOR_BLUE);
-    init_pair(14, COLOR_BLACK,   COLOR_WHITE);
-    init_pair(15, COLOR_BLACK,   COLOR_YELLOW);
-    init_pair(16, COLOR_BLACK,   COLOR_GREEN);
-    init_pair(17, COLOR_BLACK,   COLOR_MAGENTA);
-    init_pair(18, COLOR_BLACK,   COLOR_RED);
-
-    // Make orange if supported
-    if (COLOR_PAIRS > 8) {
-        init_color(COLOR_ORANGE, 816, 529, 439);
-        init_pair(3,  COLOR_ORANGE,  COLOR_ORANGE);
-    }
-
-    if (argc > 1)
+    // Setup extkeys
+    if (argc > 1) {
         fprintf(stderr, "\e[>11u");
+    }
 
+    // Main loop
     int status = 0;
     while (!(status = game(fd)));
 
-    // Cleanup
+    // Cleanup extkeys
     if (argc > 1)
         fprintf(stderr, "\e[<u");
 
     endwin();
 
+    // Cleanup 
     if (argc < 2) {
         if (ioctl(fd, KDSKBMODE, K_UNICODE)) {
-            printf("ioctl KDSKBMODE error\n");
+            fprintf(stderr, "ioctl KDSKBMODE error\n");
             close(fd);
             return 1;
         }
         if (tcsetattr(fd, 0, &old) == -1) {
-            printf("tcsetattr error\n");
+            fprintf(stderr, "tcsetattr error\n");
             close(fd);
             return 1;
         }
