@@ -47,6 +47,12 @@ enum Parser {
     INVALID,
 };
 
+enum InputMode {
+    EXTKEYS,
+    SCANCODES,
+    NORM
+};
+
 // extended keyboard protocol keycodes
 const uint32_t keys[KEYS] = {
     KEY_LEFT,  // Left  | ←
@@ -349,7 +355,7 @@ void init_curses () {
     init_pair(18, COLOR_BLACK,   COLOR_RED);
 
     // Make orange if supported
-    if (COLOR_PAIRS > 8) {
+    if (COLORS > 8) {
         init_color(COLOR_ORANGE, 816, 529, 439);
         init_pair(3,  COLOR_ORANGE,  COLOR_ORANGE);
     }
@@ -700,9 +706,8 @@ void wash_board(int8_t board[ARR_HEIGHT][BOARD_WIDTH]) {
     }
 }
 
-void get_inputs(int fd, int8_t inputs[]) {
-    // Using extended keyboard protocol
-    if (fd == -1) {
+void get_inputs(enum InputMode mode, int fd, int8_t inputs[]) {
+    if (mode == EXTKEYS) {
         char c;
         enum Parser state = INVALID;
         int key = 0;
@@ -761,7 +766,7 @@ void get_inputs(int fd, int8_t inputs[]) {
             }
         }
     // Reading input directly
-    } else {
+    } else if (mode == SCANCODES) {
         unsigned char buf[32];
         ssize_t n = read(fd, buf, sizeof(buf));
 
@@ -778,7 +783,7 @@ void get_inputs(int fd, int8_t inputs[]) {
     }
 }
 
-int8_t game(int fd) {
+int8_t game(enum InputMode input_mode, int fd) {
     if (COLS < WIDTH || LINES < HEIGHT) {
         return 2;
     }
@@ -846,7 +851,7 @@ int8_t game(int fd) {
         game_time = get_ms();
         for (int8_t i = 0; i < KEYS; i++)
             last_inputs[i] = inputs[i];
-        get_inputs(fd, inputs);
+        get_inputs(input_mode, fd, inputs);
 
         for (int8_t i = 0; i < 8; i++) {
             keys += inputs[i] && !last_inputs[i];
@@ -930,7 +935,7 @@ int8_t game(int fd) {
         draw_board(board_win, board, curr, 21);
         draw_stats(stat_win, game_time - start_time, pieces, keys, holds);
         while (1) {
-            get_inputs(fd, inputs);
+            get_inputs(input_mode, fd, inputs);
             if (inputs[RESET] || inputs[QUIT])
                 break;
             draw_keys(key_win, inputs);
@@ -955,34 +960,47 @@ int main(int argc, char **argv) {
     struct termios old;
     struct termios new;
     int fd = -1;
-
-    // Setup fd to read from console
-    if (argc < 2) {
-        fd = getfd(&old, &new);
-        if (fd < 0) {
-            return 1;
-        }
-    }
+    enum InputMode mode = EXTKEYS;
 
     init_curses();
 
     // Setup extkeys
-    if (argc > 1) {
+    if (mode == EXTKEYS) {
         fprintf(stderr, "\e[>11u");
+        fprintf(stderr, "\e[?u");
+        char *response = "\e[?11u";
+
+        nodelay(stdscr, 0);
+        timeout(100);
+        char c = getch();
+        nodelay(stdscr, 1);
+
+        for (int8_t i = 0; i < 6; i++) {
+            if (c != response[i]) {
+                mode = SCANCODES;
+            }
+            c = getch();
+        }
+    }
+
+    // Setup fd to read from console
+    if (mode == SCANCODES) {
+        fd = getfd(&old, &new);
+        if (fd < 0) {
+            mode = NORM;
+        }
     }
 
     // Main loop
     int8_t status = 0;
-    while (!(status = game(fd)));
+    while (!(status = game(mode, fd)) && mode != NORM); // ignore norm for now
 
     // Cleanup extkeys
-    if (argc > 1)
+    if (mode == EXTKEYS)
         fprintf(stderr, "\e[<u");
 
-    endwin();
-
     // Cleanup 
-    if (argc < 2) {
+    if (mode == SCANCODES) {
         if (ioctl(fd, KDSKBMODE, K_UNICODE)) {
             fprintf(stderr, "ioctl KDSKBMODE error\n");
             close(fd);
@@ -995,6 +1013,8 @@ int main(int argc, char **argv) {
         }
         close(fd);
     }
+
+    endwin();
 
     if (status == 2) {
         fprintf(stderr, "Screen dimensions smaller than %dx%d\n", WIDTH, HEIGHT);
