@@ -389,7 +389,7 @@ int8_t check_collide(int8_t board[ARR_HEIGHT][BOARD_WIDTH], int8_t x, int8_t y, 
           || minoX >= BOARD_WIDTH
           || minoX < 0
           || minoY < 0
-              || board[minoY][minoX])
+          || board[minoY][minoX])
             return 1;
     }
     return 0;
@@ -532,84 +532,58 @@ void draw_hold(WINDOW *w, int8_t p, int8_t held) {
 
 void draw_keys(WINDOW *w, int8_t inputs[]) {
     werase(w);
+    // by top left corner (y, x)
+    const int key_pos[KEYS - 2][2] = {
+        { 4, 23 },
+        { 4, 28 },
+        { 4, 33 },
+        { 4, 15 },
+        { 0,  5 },
+        { 0, 10 },
+        { 0, 15 },
+        { 2,  0 },
+    };
 
+    const char *key_chars[KEYS - 2] = {
+        "←",
+        "→",
+        "↓",
+        "▼",
+        "(",
+        ")",
+        "/",
+        "↕"
+    };
+
+    // base key display
     wattron(w, COLOR_PAIR(11));
-    mvwprintw(w, 0, 5, "▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄");
-    mvwprintw(w, 2, 5, "▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀");
-    mvwprintw(w, 4, 23, "▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄");
-    mvwprintw(w, 6, 23, "▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀");
-    mvwprintw(w, 2, 0, "▄▄▄▄▄");
-    mvwprintw(w, 4, 0, "▀▀▀▀▀");
-    mvwprintw(w, 4, 15, "▄▄▄▄▄");
-    mvwprintw(w, 6, 15, "▀▀▀▀▀");
+    for (int i = 0; i < KEYS - 2; i++) {
+        mvwprintw(w, key_pos[i][0]    , key_pos[i][1], "▄▄▄▄▄");
+        mvwprintw(w, key_pos[i][0] + 2, key_pos[i][1], "▀▀▀▀▀");
+    }
     wattroff(w, COLOR_PAIR(11));
 
     wattron(w, COLOR_PAIR(10));
-    mvwprintw(w, 1, 5, "  (    )    /  ");
-    mvwprintw(w, 3, 0, "  ↕  ");
-    mvwprintw(w, 5, 15, "  ▼  ");
-    mvwprintw(w, 5, 23, "  ←    ↓    →  ");
+    for (int i = 0; i < KEYS - 2; i++) {
+        mvwprintw(w, key_pos[i][0] + 1, key_pos[i][1], "  %s  ", key_chars[i]);
+    }
     wattroff(w, COLOR_PAIR(10));
 
+    // pressed keys
     wattron(w, COLOR_PAIR(8));
-    if (inputs[LEFT]) {
-        mvwprintw(w, 4, 23, "▄▄▄▄▄");
-        mvwprintw(w, 6, 23, "▀▀▀▀▀");
-    }
-    if (inputs[RIGHT]) {
-        mvwprintw(w, 4, 33, "▄▄▄▄▄");
-        mvwprintw(w, 6, 33, "▀▀▀▀▀");
-    }
-    if (inputs[SD]) {
-        mvwprintw(w, 4, 28, "▄▄▄▄▄");
-        mvwprintw(w, 6, 28, "▀▀▀▀▀");
-    }
-    if (inputs[HD]) {
-        mvwprintw(w, 4, 15, "▄▄▄▄▄");
-        mvwprintw(w, 6, 15, "▀▀▀▀▀");
-    }
-    if (inputs[CCW]) {
-        mvwprintw(w, 0, 5, "▄▄▄▄▄");
-        mvwprintw(w, 2, 5, "▀▀▀▀▀");
-    }
-    if (inputs[CW]) {
-        mvwprintw(w, 0, 10, "▄▄▄▄▄");
-        mvwprintw(w, 2, 10, "▀▀▀▀▀");
-    }
-    if (inputs[FLIP]) {
-        mvwprintw(w, 0, 15, "▄▄▄▄▄");
-        mvwprintw(w, 2, 15, "▀▀▀▀▀");
-    }
-    if (inputs[HOLD]) {
-        mvwprintw(w, 2, 0, "▄▄▄▄▄");
-        mvwprintw(w, 4, 0, "▀▀▀▀▀");
+    for (int i = 0; i < KEYS - 2; i++) {
+        if (inputs[i]) {
+            mvwprintw(w, key_pos[i][0]    , key_pos[i][1], "▄▄▄▄▄");
+            mvwprintw(w, key_pos[i][0] + 2, key_pos[i][1], "▀▀▀▀▀");
+        }
     }
     wattroff(w, COLOR_PAIR(8));
 
     wattron(w, COLOR_PAIR(9));
-    if (inputs[LEFT]) {
-        mvwprintw(w, 5, 23, "  ←  ");
-    }
-    if (inputs[RIGHT]) {
-        mvwprintw(w, 5, 33, "  →  ");
-    }
-    if (inputs[SD]) {
-        mvwprintw(w, 5, 28, "  ↓  ");
-    }
-    if (inputs[HD]) {
-        mvwprintw(w, 5, 15, "  ▼  ");
-    }
-    if (inputs[CCW]) {
-        mvwprintw(w, 1, 5, "  (  ");
-    }
-    if (inputs[CW]) {
-        mvwprintw(w, 1, 10, "  )  ");
-    }
-    if (inputs[FLIP]) {
-        mvwprintw(w, 1, 15, "  /  ");
-    }
-    if (inputs[HOLD]) {
-        mvwprintw(w, 3, 0, "  ↕  ");
+    for (int i = 0; i < KEYS - 2; i++) {
+        if (inputs[i]) {
+            mvwprintw(w, key_pos[i][0] + 1, key_pos[i][1], "  %s  ", key_chars[i]);
+        }
     }
     wattroff(w, COLOR_PAIR(9));
 
