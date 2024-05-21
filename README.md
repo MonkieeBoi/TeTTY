@@ -1,6 +1,6 @@
 # TeTTY
 
-Yet another tui Tetris clone. This one however aims to follow guideline Tetris,
+Yet another tui Tetris (more like [Jstris](https://jstris.jezevec10.com/)) clone. This one however aims to follow guideline Tetris,
 meaning SRS, hold, harddrop and all that good stuff.
 
 # Showcase

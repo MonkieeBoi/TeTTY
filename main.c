@@ -53,32 +53,46 @@ enum InputMode {
     NORM
 };
 
-// extended keyboard protocol keycodes
-const uint32_t keys[KEYS] = {
-    KEY_LEFT,  // Left  | ←
-    KEY_RIGHT, // Right | →
-    KEY_DOWN,  // SD    | ↓
-    ' ',       // HD    | Space
-    'a',       // CCW   | a
-    's',       // CW    | s
-    'd',       // 180   | d
-    57441,     // Hold  | shift
-    'r',       // Reset | r
-    'q'        // Quit  | q
-};
-
-// scancodes
-const uint8_t keys2[KEYS] = {
-    0x4b, // Left  | ←
-    0x4d, // Right | →
-    0x50, // SD    | ↓
-    0x39, // HD    | Space
-    0x1e, // CCW   | a
-    0x1f, // CW    | s
-    0x20, // 180   | d
-    0x2a, // Hold  | z
-    0x13, // Reset | r
-    0x10  // Quit  | q
+const uint32_t keys[][KEYS] = {
+    // extended keyboard protocol keycodes
+    {
+        KEY_LEFT,  // Left  | ←
+        KEY_RIGHT, // Right | →
+        KEY_DOWN,  // SD    | ↓
+        ' ',       // HD    | Space
+        'a',       // CCW   | a
+        's',       // CW    | s
+        'd',       // 180   | d
+        57441,     // Hold  | shift
+        'r',       // Reset | r
+        'q'        // Quit  | q
+    },
+    // scancodes
+    {
+        0x4b,      // Left  | ←
+        0x4d,      // Right | →
+        0x50,      // SD    | ↓
+        0x39,      // HD    | Space
+        0x1e,      // CCW   | a
+        0x1f,      // CW    | s
+        0x20,      // 180   | d
+        0x2a,      // Hold  | shift
+        0x13,      // Reset | r
+        0x10       // Quit  | q
+    },
+    // normal keys
+    {
+        'D',       // Left  | ←
+        'C',       // Right | →
+        'B',       // SD    | ↓
+        ' ',       // HD    | Space
+        'a',       // CCW   | a
+        's',       // CW    | s
+        'd',       // 180   | d
+        'z',       // Hold  | z
+        'r',       // Reset | r
+        'q'        // Quit  | q
+    }
 };
 
 typedef struct Piece {
@@ -755,7 +769,7 @@ void get_inputs(enum InputMode mode, int fd, int8_t inputs[]) {
                         }
                     }
                     for (int8_t i = 0; i < KEYS; i++) {
-                        if (keys[i] == key) {
+                        if (keys[mode][i] == key) {
                             inputs[i] = pressed;
                         }
                     }
@@ -772,12 +786,24 @@ void get_inputs(enum InputMode mode, int fd, int8_t inputs[]) {
 
         for (ssize_t i = 0; i < n; i++) {
             for (int8_t j = 0; j < KEYS; j++) {
-                if (keys2[j] == buf[i]) {
+                if (keys[mode][j] == buf[i]) {
                     inputs[j] = 1;
                     continue;
                 }
-                if ((keys2[j] | 0x80) == buf[i])
+                if ((keys[mode][j] | 0x80) == buf[i])
                     inputs[j] = 0;
+            }
+        }
+    } else if (mode == NORM) {
+        int c;
+        for (int i = 0; i < KEYS; i++) {
+            inputs[i] = 0;
+        }
+        while ((c = getch()) != ERR) {
+            for (int i = 0; i < KEYS; i++) {
+                if (keys[mode][i] == c) {
+                    inputs[i] = 1;
+                }
             }
         }
     }
@@ -993,7 +1019,7 @@ int main(int argc, char **argv) {
 
     // Main loop
     int8_t status = 0;
-    while (!(status = game(mode, fd)) && mode != NORM); // ignore norm for now
+    while (!(status = game(mode, fd)));
 
     // Cleanup extkeys
     if (mode == EXTKEYS)
