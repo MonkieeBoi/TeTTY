@@ -488,7 +488,7 @@ void draw_piece(WINDOW *w, int8_t x, int8_t y, int8_t type, int8_t rot, int8_t g
     }
 }
 
-void draw_board(WINDOW *w, int8_t board[ARR_HEIGHT][BOARD_WIDTH], Piece *p, int8_t line) {
+void draw_board(WINDOW *w, int8_t board[ARR_HEIGHT][BOARD_WIDTH], Piece *p, int8_t line, int8_t mono) {
     werase(w);
 
     int8_t orig_y = p->y;
@@ -499,9 +499,9 @@ void draw_board(WINDOW *w, int8_t board[ARR_HEIGHT][BOARD_WIDTH], Piece *p, int8
     for (int8_t i = 0; i < BOARD_HEIGHT; i++) {
         for (int8_t j = 0; j < BOARD_WIDTH; j++) {
             if (board[i][j]) {
-                wattron(w, COLOR_PAIR(board[i][j]));
+                wattron(w, COLOR_PAIR(mono ? 11 : board[i][j]));
                 mvwprintw(w, BOARD_HEIGHT - 1 - i, 2 * j, "[]");
-                wattroff(w, COLOR_PAIR(board[i][j]));
+                wattroff(w, COLOR_PAIR(mono ? 11 : board[i][j]));
             } else if (i == line) {
                 mvwprintw(w, BOARD_HEIGHT - 1 - i, 2 * j, "__");
             }
@@ -682,16 +682,6 @@ int8_t clear_lines(int8_t board[ARR_HEIGHT][BOARD_WIDTH]) {
         }
     }
     return cleared;
-}
-
-void wash_board(int8_t board[ARR_HEIGHT][BOARD_WIDTH]) {
-    for (int8_t i = 0; i < BOARD_HEIGHT; i++) {
-        for (int8_t j = 0; j < BOARD_WIDTH; j++) {
-            if (board[i][j]) {
-                board[i][j] = 11;
-            }
-        }
-    }
 }
 
 void get_inputs(enum InputMode mode, int fd, int8_t inputs[]) {
@@ -915,7 +905,7 @@ int8_t game(enum InputMode input_mode, int fd) {
         }
 
         // Updates
-        draw_board(board_win, board, curr, CLEAR_GOAL - cleared);
+        draw_board(board_win, board, curr, CLEAR_GOAL - cleared, 0);
         draw_queue(queue_win, queue, queue_pos);
         draw_hold(hold_win, hold, hold_used);
         draw_keys(key_win, inputs);
@@ -931,8 +921,7 @@ int8_t game(enum InputMode input_mode, int fd) {
 
     // Post game screen
     if (cleared >= CLEAR_GOAL) {
-        wash_board(board);
-        draw_board(board_win, board, curr, 21);
+        draw_board(board_win, board, curr, 21, 1);
         draw_stats(stat_win, game_time - start_time, pieces, keys, holds);
         while (1) {
             get_inputs(input_mode, fd, inputs);
