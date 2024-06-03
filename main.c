@@ -349,29 +349,31 @@ void init_curses () {
     use_default_colors();
     nodelay(stdscr, 1);
 
-    init_pair(1,  COLOR_CYAN,    COLOR_CYAN);
-    init_pair(2,  COLOR_BLUE,    COLOR_BLUE);
-    init_pair(3,  COLOR_WHITE,   COLOR_WHITE);
-    init_pair(4,  COLOR_YELLOW,  COLOR_YELLOW);
-    init_pair(5,  COLOR_GREEN,   COLOR_GREEN);
-    init_pair(6,  COLOR_MAGENTA, COLOR_MAGENTA);
-    init_pair(7,  COLOR_RED,     COLOR_RED);
+    // Base pieces
+    init_pair(1,  COLOR_CYAN,    -1);
+    init_pair(2,  COLOR_BLUE,    -1);
+    init_pair(3,  COLOR_WHITE,   -1);
+    init_pair(4,  COLOR_YELLOW,  -1);
+    init_pair(5,  COLOR_GREEN,   -1);
+    init_pair(6,  COLOR_MAGENTA, -1);
+    init_pair(7,  COLOR_RED,     -1);
+
+    // End screen board + pressed key bg
     init_pair(8,  COLOR_WHITE,   -1);
+
+    // Pressed key text
     init_pair(9,  COLOR_BLUE,    COLOR_WHITE);
+
+    // Base key text
     init_pair(10, COLOR_WHITE,   COLOR_BLUE);
+
+    // Base key bg
     init_pair(11, COLOR_BLUE,    -1);
-    init_pair(12, COLOR_BLACK,   COLOR_CYAN);
-    init_pair(13, COLOR_BLACK,   COLOR_BLUE);
-    init_pair(14, COLOR_BLACK,   COLOR_WHITE);
-    init_pair(15, COLOR_BLACK,   COLOR_YELLOW);
-    init_pair(16, COLOR_BLACK,   COLOR_GREEN);
-    init_pair(17, COLOR_BLACK,   COLOR_MAGENTA);
-    init_pair(18, COLOR_BLACK,   COLOR_RED);
 
     // Make orange if supported
     if (COLORS > 8) {
         init_color(COLOR_ORANGE, 816, 529, 439);
-        init_pair(3,  COLOR_ORANGE,  COLOR_ORANGE);
+        init_pair(3,  COLOR_ORANGE,  -1);
     }
 }
 
@@ -478,13 +480,13 @@ void draw_gui(int8_t x, int8_t y) {
 
 void draw_piece(WINDOW *w, int8_t x, int8_t y, int8_t type, int8_t rot, int8_t ghost) {
     for (int8_t i = 0; i < 4; i++) {
-        wattron(w, COLOR_PAIR(ghost ? 8 : (type + 1)));
+        wattron(w, COLOR_PAIR(type + 1));
         mvwprintw(w,
                   y + pieces[type][rot][i][1],
                   2 * (x + pieces[type][rot][i][0]),
-                  "[]"
+                  ghost ? "▓▓" : "██"
         );
-        wattroff(w, COLOR_PAIR(ghost ? 8 : (type + 1)));
+        wattroff(w, COLOR_PAIR(type + 1));
     }
 }
 
@@ -499,17 +501,19 @@ void draw_board(WINDOW *w, int8_t board[ARR_HEIGHT][BOARD_WIDTH], Piece *p, int8
     for (int8_t i = 0; i < BOARD_HEIGHT; i++) {
         for (int8_t j = 0; j < BOARD_WIDTH; j++) {
             if (board[i][j]) {
-                wattron(w, COLOR_PAIR(mono ? 11 : board[i][j]));
-                mvwprintw(w, BOARD_HEIGHT - 1 - i, 2 * j, "[]");
-                wattroff(w, COLOR_PAIR(mono ? 11 : board[i][j]));
+                wattron(w, COLOR_PAIR(mono ? 8 : board[i][j]));
+                mvwprintw(w, BOARD_HEIGHT - 1 - i, 2 * j, mono ? "▓▓" : "██");
+                wattroff(w, COLOR_PAIR(mono ? 8 : board[i][j]));
             } else if (i == line) {
                 mvwprintw(w, BOARD_HEIGHT - 1 - i, 2 * j, "__");
             }
         }
     }
 
-    draw_piece(w, p->x, BOARD_HEIGHT - 1 - ghost_y, p->type, p->rot, 1);
-    draw_piece(w, p->x, BOARD_HEIGHT - 1 - p->y, p->type, p->rot, 0);
+    if (!mono) {
+        draw_piece(w, p->x, BOARD_HEIGHT - 1 - ghost_y, p->type, p->rot, 1);
+        draw_piece(w, p->x, BOARD_HEIGHT - 1 - p->y, p->type, p->rot, 0);
+    }
     wrefresh(w);
 }
 
