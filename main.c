@@ -820,6 +820,7 @@ int8_t game(enum InputMode input_mode, int fd) {
     int pieces = 0;
     int holds = 0;
     int keys = 0;
+    int keys_tmp = 0;
     int cleared = 0;
 
     mvprintw(offset_y + 11, offset_x + 53, "READY");
@@ -848,7 +849,7 @@ int8_t game(enum InputMode input_mode, int fd) {
         get_inputs(input_mode, fd, inputs);
 
         for (int8_t i = 0; i < 8; i++) {
-            keys += inputs[i] && !last_inputs[i];
+            keys_tmp += inputs[i] && !last_inputs[i];
         }
 
         if (inputs[RESET] || inputs[QUIT])
@@ -861,6 +862,8 @@ int8_t game(enum InputMode input_mode, int fd) {
             hold_used = 0;
             grav_c = 0;
             pieces++;
+            keys += keys_tmp;
+            keys_tmp = 0;
             if (cleared >= CLEAR_GOAL)
                 break;
         }
