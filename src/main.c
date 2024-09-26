@@ -1,13 +1,14 @@
 #include <curses.h>
+#include <sys/ioctl.h>
+#include <termios.h>
 #include <fcntl.h>
 #include <linux/kd.h>
 #include <locale.h>
-#include <stdint.h>
 #include <stdlib.h>
-#include <sys/ioctl.h>
-#include <termios.h>
+#include <string.h>
 #include <time.h>
 #include <unistd.h>
+#include "input.h"
 
 #define BOARD_HEIGHT 20
 #define ARR_HEIGHT 40
@@ -24,7 +25,6 @@
 #define CLEAR_GOAL 40
 #define QUEUE_SZ 5
 #define BAG_SZ 7
-#define KEYS 10
 
 #define LEFT 0
 #define RIGHT 1
@@ -38,62 +38,6 @@
 #define QUIT 9
 
 #define COLOR_ORANGE 8
-
-enum Parser {
-    CODE,
-    MOD,
-    STATE,
-    END,
-    INVALID,
-};
-
-enum InputMode {
-    EXTKEYS,
-    SCANCODES,
-    NORM
-};
-
-const uint32_t keys[][KEYS] = {
-    // extended keyboard protocol keycodes
-    {
-        KEY_LEFT,  // Left  | ←
-        KEY_RIGHT, // Right | →
-        KEY_DOWN,  // SD    | ↓
-        ' ',       // HD    | Space
-        'a',       // CCW   | a
-        's',       // CW    | s
-        'd',       // 180   | d
-        57441,     // Hold  | shift
-        'r',       // Reset | r
-        'q'        // Quit  | q
-    },
-    // scancodes
-    {
-        0x4b,      // Left  | ←
-        0x4d,      // Right | →
-        0x50,      // SD    | ↓
-        0x39,      // HD    | Space
-        0x1e,      // CCW   | a
-        0x1f,      // CW    | s
-        0x20,      // 180   | d
-        0x2a,      // Hold  | shift
-        0x13,      // Reset | r
-        0x10       // Quit  | q
-    },
-    // normal keys
-    {
-        'D',       // Left  | ←
-        'C',       // Right | →
-        'B',       // SD    | ↓
-        ' ',       // HD    | Space
-        'a',       // CCW   | a
-        's',       // CW    | s
-        'd',       // 180   | d
-        'z',       // Hold  | z
-        'r',       // Reset | r
-        'q'        // Quit  | q
-    }
-};
 
 typedef struct Piece {
     int8_t x;
@@ -286,59 +230,6 @@ const int8_t offsets2[2][4][2][2] = {
         {{ 0, 1}, { 0, 1}},
     }
 };
-
-static const char *conspath[] = {
-    "/proc/self/fd/0",
-    "/dev/tty",
-    "/dev/tty0",
-    "/dev/vc/0",
-    "/dev/systty",
-    "/dev/console",
-    NULL
-};
-
-int is_a_console(int fd) {
-    char arg = 0;
-    return (isatty(fd) && ioctl(fd, KDGKBTYPE, &arg) == 0 && ((arg == KB_101) || (arg == KB_84)));
-}
-
-int getfd(struct termios* old, struct termios* new) {
-    int fd = 0;
-
-    for (int i = 0; conspath[i]; i++) {
-        fd = open(conspath[i], O_RDONLY | O_NOCTTY | O_NONBLOCK);
-        if (is_a_console(fd))
-            break;
-        close(fd);
-    }
-
-    if (fd < 0) {
-        fprintf(stderr, "no fd\n");
-        return -1;
-    }
-
-    if (tcgetattr(fd, old) == -1 || tcgetattr(fd, new) == -1) {
-        fprintf(stderr, "tcgetattr error\n");
-        return -1;
-    }
-
-    new->c_lflag &= ~((tcflag_t)(ICANON | ECHO | ISIG));
-    new->c_iflag     = 0;
-    new->c_cc[VMIN]  = 0;
-    new->c_cc[VTIME] = 0;
-
-    if (tcsetattr(fd, TCSAFLUSH, new) == -1) {
-        fprintf(stderr, "tcsetattr error\n");
-        return -1;
-    }
-
-    if (ioctl(fd, KDSKBMODE, K_RAW)) {
-        fprintf(stderr, "ioctl KDSKBMODE error\n");
-        return -1;
-    }
-
-    return fd;
-}
 
 void init_curses () {
     initscr();
@@ -688,95 +579,6 @@ int8_t clear_lines(int8_t board[ARR_HEIGHT][BOARD_WIDTH]) {
     return cleared;
 }
 
-void get_inputs(enum InputMode mode, int fd, int8_t inputs[]) {
-    if (mode == EXTKEYS) {
-        char c;
-        enum Parser state = INVALID;
-        int key = 0;
-        int8_t pressed = 0;
-        while ((c = getch()) != ERR) {
-            if (c == 27) {
-                key = 0;
-                pressed = 0;
-                state = CODE;
-                continue;
-            }
-
-            switch (state) {
-                case CODE:
-                    if ('0' <= c && c <= '9') {
-                        key *= 10;
-                        key += (c - '0');
-                    } else if (c == ';')
-                        state++;
-                    else if (c != '[')
-                        state = INVALID;
-                    break;
-                case MOD:
-                    if (c == ':') state++;
-                    break;
-                case STATE:
-                    pressed = (c == '1');
-                    state++;
-                    break;
-                case END:
-                    if (key == 1 && 'A' <= c && c <= 'D') {
-                        switch (c) {
-                            case 'A':
-                                key = KEY_UP;
-                                break;
-                            case 'B':
-                                key = KEY_DOWN;
-                                break;
-                            case 'C':
-                                key = KEY_RIGHT;
-                                break;
-                            case 'D':
-                                key = KEY_LEFT;
-                                break;
-                        }
-                    }
-                    for (int8_t i = 0; i < KEYS; i++) {
-                        if (keys[mode][i] == key) {
-                            inputs[i] = pressed;
-                        }
-                    }
-                    state++;
-                    break;
-                case INVALID:
-                    break;
-            }
-        }
-    // Reading input directly
-    } else if (mode == SCANCODES) {
-        unsigned char buf[32];
-        ssize_t n = read(fd, buf, sizeof(buf));
-
-        for (ssize_t i = 0; i < n; i++) {
-            for (int8_t j = 0; j < KEYS; j++) {
-                if (keys[mode][j] == buf[i]) {
-                    inputs[j] = 1;
-                    continue;
-                }
-                if ((keys[mode][j] | 0x80) == buf[i])
-                    inputs[j] = 0;
-            }
-        }
-    } else if (mode == NORM) {
-        int c;
-        for (int i = 0; i < KEYS; i++) {
-            inputs[i] = 0;
-        }
-        while ((c = getch()) != ERR) {
-            for (int i = 0; i < KEYS; i++) {
-                if (keys[mode][i] == c) {
-                    inputs[i] = 1;
-                }
-            }
-        }
-    }
-}
-
 int8_t game(enum InputMode input_mode, int fd) {
     if (COLS < WIDTH || LINES < HEIGHT) {
         return 2;
@@ -949,7 +751,7 @@ int8_t game(enum InputMode input_mode, int fd) {
     return inputs[QUIT];
 }
 
-int main(int argc, char **argv) {
+int main() {
     srandom(time(NULL));
     setlocale(LC_ALL, "");
 
@@ -960,55 +762,14 @@ int main(int argc, char **argv) {
 
     init_curses();
 
-    // Setup extkeys
-    if (mode == EXTKEYS) {
-        fprintf(stderr, "\e[>11u");
-        fprintf(stderr, "\e[?u");
-        char *response = "\e[?11u";
-
-        nodelay(stdscr, 0);
-        timeout(100);
-        char c = getch();
-        nodelay(stdscr, 1);
-
-        for (int8_t i = 0; i < 6; i++) {
-            if (c != response[i]) {
-                mode = SCANCODES;
-            }
-            c = getch();
-        }
-    }
-
-    // Setup fd to read from console
-    if (mode == SCANCODES) {
-        fd = getfd(&old, &new);
-        if (fd < 0) {
-            mode = NORM;
-        }
-    }
+    mode = mode_set(mode, &old, &new, &fd);
 
     // Main loop
     int8_t status = 0;
     while (!(status = game(mode, fd)));
 
-    // Cleanup extkeys
-    if (mode == EXTKEYS)
-        fprintf(stderr, "\e[<u");
-
     // Cleanup 
-    if (mode == SCANCODES) {
-        if (ioctl(fd, KDSKBMODE, K_UNICODE)) {
-            fprintf(stderr, "ioctl KDSKBMODE error\n");
-            close(fd);
-            return 1;
-        }
-        if (tcsetattr(fd, 0, &old) == -1) {
-            fprintf(stderr, "tcsetattr error\n");
-            close(fd);
-            return 1;
-        }
-        close(fd);
-    }
+    input_clean(mode, &old, fd);
 
     endwin();
 
