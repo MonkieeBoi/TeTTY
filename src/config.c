@@ -144,6 +144,8 @@ void get_config_path(char *config_path) {
     } else if (home_env) {
         strcpy(config_path, home_env);
         strcat(config_path, "/.config/tetty");
+    } else {
+        return;
     }
     strcat(config_path, "/config.ini");
 }
