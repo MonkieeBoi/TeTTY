@@ -9,6 +9,7 @@
 #include <time.h>
 #include <unistd.h>
 #include "input.h"
+#include "config.h"
 
 #define BOARD_HEIGHT 20
 #define ARR_HEIGHT 40
@@ -579,7 +580,7 @@ int8_t clear_lines(int8_t board[ARR_HEIGHT][BOARD_WIDTH]) {
     return cleared;
 }
 
-int8_t game(enum InputMode input_mode, int fd) {
+int8_t game(Config *config, int fd) {
     if (COLS < WIDTH || LINES < HEIGHT) {
         return 2;
     }
@@ -648,7 +649,7 @@ int8_t game(enum InputMode input_mode, int fd) {
         game_time = get_ms();
         for (int8_t i = 0; i < KEYS; i++)
             last_inputs[i] = inputs[i];
-        get_inputs(input_mode, fd, inputs);
+        get_inputs(config, fd, inputs);
 
         for (int8_t i = 0; i < 8; i++) {
             keys_tmp += inputs[i] && !last_inputs[i];
@@ -733,7 +734,7 @@ int8_t game(enum InputMode input_mode, int fd) {
         draw_board(board_win, board, curr, 21, 1);
         draw_stats(stat_win, game_time - start_time, pieces, keys, holds);
         while (1) {
-            get_inputs(input_mode, fd, inputs);
+            get_inputs(config, fd, inputs);
             if (inputs[RESET] || inputs[QUIT])
                 break;
             draw_keys(key_win, inputs);
@@ -758,18 +759,20 @@ int main() {
     struct termios old;
     struct termios new;
     int fd = -1;
-    enum InputMode mode = EXTKEYS;
+    Config config = { 0 };
+    config.mode = EXTKEYS;
 
     init_curses();
 
-    mode = mode_set(mode, &old, &new, &fd);
+    config.mode = mode_set(config.mode, &old, &new, &fd);
+    config_init(&config);
 
     // Main loop
     int8_t status = 0;
-    while (!(status = game(mode, fd)));
+    while (!(status = game(&config, fd)));
 
     // Cleanup 
-    input_clean(mode, &old, fd);
+    input_clean(config.mode, &old, fd);
 
     endwin();
 

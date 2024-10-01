@@ -1,14 +1,14 @@
 CC=gcc
 CFLAGS=-g -Wall -Wextra -Iinclude -fsanitize=address
-LIBS=-lncurses
+LIBS=-lncurses -linih
 TARGET=tetty
 
 SRC = src
 OBJ = build
 INC = include
 
-_DEPS = input.h
-_OBJS = main.o input.o
+_DEPS = input.h config.h
+_OBJS = main.o input.o config.o
 
 DEPS = $(patsubst %,$(INC)/%,$(_DEPS))
 OBJS = $(patsubst %,$(OBJ)/%,$(_OBJS))
