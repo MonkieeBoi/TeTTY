@@ -97,7 +97,7 @@ enum InputMode mode_set(enum InputMode mode, struct termios* old, struct termios
     return mode;
 }
 
-void update_input(Config *config, int8_t inputs[], uint32_t key, int8_t pressed) {
+void update_input(Config *config, int8_t inputs[KEYS], uint32_t key, int8_t pressed) {
     if (key == config->left)  { inputs[0] = pressed; return; }
     if (key == config->right) { inputs[1] = pressed; return; }
     if (key == config->sd)    { inputs[2] = pressed; return; }
@@ -129,7 +129,7 @@ void input_clean(enum InputMode mode, struct termios *old, int fd) {
     }
 }
 
-void get_extkeys_input(int8_t inputs[], Config *config) {
+void get_extkeys_input(int8_t inputs[KEYS], Config *config) {
     char c;
     enum Parser state = INVALID;
     uint32_t key = 0;
@@ -185,7 +185,7 @@ void get_extkeys_input(int8_t inputs[], Config *config) {
     }
 }
 
-void get_scan_input(int fd, int8_t inputs[], Config *config) {
+void get_scan_input(int fd, int8_t inputs[KEYS], Config *config) {
     unsigned char buf[32];
     ssize_t n = read(fd, buf, sizeof(buf));
 
@@ -195,7 +195,7 @@ void get_scan_input(int fd, int8_t inputs[], Config *config) {
     }
 }
 
-void get_norm_input(int8_t inputs[], Config *config) {
+void get_norm_input(int8_t inputs[KEYS], Config *config) {
     int c;
     for (int i = 0; i < KEYS; i++) {
         inputs[i] = 0;
@@ -205,7 +205,7 @@ void get_norm_input(int8_t inputs[], Config *config) {
     }
 }
 
-void get_inputs(Config *config, int fd, int8_t inputs[]) {
+void get_inputs(Config *config, int fd, int8_t inputs[KEYS]) {
     switch (config->mode) {
     case EXTKEYS:
         get_extkeys_input(inputs, config);

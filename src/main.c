@@ -426,7 +426,7 @@ void draw_hold(WINDOW *w, int8_t p, int8_t held) {
     wrefresh(w);
 }
 
-void draw_keys(WINDOW *w, int8_t inputs[]) {
+void draw_keys(WINDOW *w, int8_t inputs[KEYS]) {
     werase(w);
     // by top left corner (y, x)
     const int key_pos[KEYS - 2][2] = {

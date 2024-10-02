@@ -23,6 +23,6 @@ typedef struct Config {
     enum InputMode mode;
 } Config;
 
-void config_init(Config *);
+void config_init(Config *config);
 
 #endif

@@ -42,92 +42,44 @@ void config_init_norm(Config *config) {
     config->quit  = 'q';
 }
 
-static int extkeys_handler(void* user, const char* section, const char* name,
+static int handler(void* user, const char* section, const char* name,
                    const char* value) {
     Config *config = (Config*) user;
 
     #define MATCH(s, n) (strcmp(section, s) == 0 && strcmp(name, n) == 0)
-    if (MATCH("extkeys", "left")) {
-        config->left = atoi(value);
-    } else if (MATCH("extkeys", "right")) {
-        config->right = atoi(value);
-    } else if (MATCH("extkeys", "sd")) {
-        config->sd = atoi(value);
-    } else if (MATCH("extkeys", "hd")) {
-        config->hd = atoi(value);
-    } else if (MATCH("extkeys", "ccw")) {
-        config->ccw = atoi(value);
-    } else if (MATCH("extkeys", "cw")) {
-        config->cw = atoi(value);
-    } else if (MATCH("extkeys", "180")) {
-        config->flip = atoi(value);
-    } else if (MATCH("extkeys", "hold")) {
-        config->hold = atoi(value);
-    } else if (MATCH("extkeys", "reset")) {
-        config->reset = atoi(value);
-    } else if (MATCH("extkeys", "quit")) {
-        config->quit = atoi(value);
-    } else {
-        return 0;
+    char *mode_section = NULL;
+
+    switch (config->mode) {
+    case EXTKEYS:
+        mode_section = "extkeys";
+        break;
+    case SCANCODES:
+        mode_section = "scan";
+        break;
+    case NORM:
+        mode_section = "norm";
+        break;
     }
-    return 1;
-}
 
-static int scan_handler(void* user, const char* section, const char* name,
-                   const char* value) {
-    Config *config = (Config*) user;
-
-    #define MATCH(s, n) (strcmp(section, s) == 0 && strcmp(name, n) == 0)
-    if (MATCH("scan", "left")) {
+    if (MATCH(mode_section, "left")) {
         config->left = atoi(value);
-    } else if (MATCH("scan", "right")) {
+    } else if (MATCH(mode_section, "right")) {
         config->right = atoi(value);
-    } else if (MATCH("scan", "sd")) {
+    } else if (MATCH(mode_section, "sd")) {
         config->sd = atoi(value);
-    } else if (MATCH("scan", "hd")) {
+    } else if (MATCH(mode_section, "hd")) {
         config->hd = atoi(value);
-    } else if (MATCH("scan", "ccw")) {
+    } else if (MATCH(mode_section, "ccw")) {
         config->ccw = atoi(value);
-    } else if (MATCH("scan", "cw")) {
+    } else if (MATCH(mode_section, "cw")) {
         config->cw = atoi(value);
-    } else if (MATCH("scan", "180")) {
+    } else if (MATCH(mode_section, "180")) {
         config->flip = atoi(value);
-    } else if (MATCH("scan", "hold")) {
+    } else if (MATCH(mode_section, "hold")) {
         config->hold = atoi(value);
-    } else if (MATCH("scan", "reset")) {
+    } else if (MATCH(mode_section, "reset")) {
         config->reset = atoi(value);
-    } else if (MATCH("scan", "quit")) {
-        config->quit = atoi(value);
-    } else {
-        return 0;
-    }
-    return 1;
-}
-
-static int norm_handler(void* user, const char* section, const char* name,
-                   const char* value) {
-    Config *config = (Config*) user;
-
-    #define MATCH(s, n) (strcmp(section, s) == 0 && strcmp(name, n) == 0)
-    if (MATCH("norm", "left")) {
-        config->left = atoi(value);
-    } else if (MATCH("norm", "right")) {
-        config->right = atoi(value);
-    } else if (MATCH("norm", "sd")) {
-        config->sd = atoi(value);
-    } else if (MATCH("norm", "hd")) {
-        config->hd = atoi(value);
-    } else if (MATCH("norm", "ccw")) {
-        config->ccw = atoi(value);
-    } else if (MATCH("norm", "cw")) {
-        config->cw = atoi(value);
-    } else if (MATCH("norm", "180")) {
-        config->flip = atoi(value);
-    } else if (MATCH("norm", "hold")) {
-        config->hold = atoi(value);
-    } else if (MATCH("norm", "reset")) {
-        config->reset = atoi(value);
-    } else if (MATCH("norm", "quit")) {
+    } else if (MATCH(mode_section, "quit")) {
         config->quit = atoi(value);
     } else {
         return 0;
@@ -157,15 +109,13 @@ void config_init(Config *config) {
     switch (config->mode) {
     case EXTKEYS:
         config_init_extkeys(config);
-        ini_parse(config_path, extkeys_handler, config);
         break;
     case SCANCODES:
         config_init_scan(config);
-        ini_parse(config_path, scan_handler, config);
         break;
     case NORM:
         config_init_norm(config);
-        ini_parse(config_path, norm_handler, config);
         break;
     }
+    ini_parse(config_path, handler, config);
 }
