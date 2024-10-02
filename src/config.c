@@ -7,12 +7,12 @@ void config_init_extkeys(Config *config) {
     config->left  = 260;
     config->right = 261;
     config->sd    = 258;
-    config->hd    = ' ',
-    config->ccw   = 'a',
-    config->cw    = 's',
-    config->flip  = 'd',
-    config->hold  = 57441,
-    config->reset = 'r',
+    config->hd    = ' ';
+    config->ccw   = 'a';
+    config->cw    = 's';
+    config->flip  = 'd';
+    config->hold  = 57441;
+    config->reset = 'r';
     config->quit  = 'q';
 }
 
