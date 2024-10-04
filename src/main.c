@@ -18,8 +18,8 @@
 #define HEIGHT BOARD_HEIGHT + 6
 #define RIGHT_MARGIN 46
 
-#define SPAWN_X 4
-#define SPAWN_Y 19
+#define SPAWN_X ((BOARD_WIDTH - 1) / 2)
+#define SPAWN_Y (BOARD_HEIGHT - 1)
 #define SPAWN_ROT 0
 #define FPS 60
 #define DAS 5
@@ -48,7 +48,7 @@ typedef struct Piece {
     uint8_t rot;
 } Piece;
 
-// TODO: figure out better way to store this
+// TODO: figure out better way/place to store this
 // Defined by offset from the piece center
 // 7 pieces, 4 rotations, 3 coordinate pairs
 const int8_t pieces[BAG_SZ][4][4][2] = {
@@ -171,7 +171,7 @@ const int8_t pieces[BAG_SZ][4][4][2] = {
     },
 };
 
-// 3 offset 'classes', 4 rotation states, 5 x & y offsets
+// 3 offset 'classes', 4 rotations, 5 xy offsets
 const int8_t offsets[3][4][5][2] = {
     // J, L, S, T, Z
     {
@@ -525,7 +525,7 @@ int8_t queue_pop(Piece *p, int8_t queue[], int8_t queue_pos) {
     gen_piece(p, queue[queue_pos]);
 
     int8_t rand = random() % (BAG_SZ - queue_pos);
-    int8_t used[BAG_SZ] = {0};
+    int8_t used[BAG_SZ] = { 0 };
     int8_t bag[BAG_SZ];
     int8_t bag_pos = 0;
 
@@ -612,19 +612,19 @@ int8_t game(Config *config, int fd) {
     int8_t queue[BAG_SZ];
     queue_init(queue);
     int8_t queue_pos = 0;
-    int8_t inputs[KEYS] = {0};
-    int8_t last_inputs[KEYS] = {0};
+    int8_t inputs[KEYS] = { 0 };
+    int8_t last_inputs[KEYS] = { 0 };
 
-    float grav = 0.02;
-    float grav_c = 0;
-    int8_t ldas_c = 0;
-    int8_t rdas_c = 0;
+    uint32_t grav = 20; // units of 1/1000 blocks per frame
+    uint32_t grav_c = 0;
+    uint8_t ldas_c = 0;
+    uint8_t rdas_c = 0;
 
-    int pieces = 0;
-    int holds = 0;
-    int keys = 0;
-    int keys_tmp = 0;
-    int cleared = 0;
+    uint32_t pieces = 0;
+    uint32_t holds = 0;
+    uint32_t keys = 0;
+    uint32_t keys_tmp = 0;
+    uint32_t cleared = 0;
 
     mvprintw(offset_y + 11, offset_x + 53, "READY");
     draw_gui(offset_x + 45, offset_y);
@@ -723,8 +723,8 @@ int8_t game(Config *config, int fd) {
 
         // Gravity Movement
         grav_c += grav;
-        move_piece(board, curr, 0, (int) -grav_c);
-        grav_c = grav_c - (int) grav_c;
+        move_piece(board, curr, 0, -(grav_c / 1000));
+        grav_c %= 1000;
 
         usleep(1000000 / FPS - (get_ms() - game_time));
     }
