@@ -9,26 +9,9 @@ meaning SRS, hold, harddrop and all that good stuff.
 
 # Todo
 
-- [X] Come up with a name
-- [X] Board
-- [ ] Handle pieces
-    - [X] Define
-    - [X] Spawn
-    - [X] Draw (probably with ncurses)
-    - [ ] Move
-        - [X] DAS
-        - [ ] ARR
-        - [X] Gravity
-    - [X] Rotate (SRS)
-    - [X] Harddrop
-    - [ ] Lock Delay
-- [X] Add hold
-- [X] Add 7-bag
-- [X] Handle line clearing
-- [X] Draw queue
-- [X] Draw ghost piece
-- [X] Draw key overlay
-- [X] Draw stats
+ - [ ] ARR
+ - [ ] Lock Delay
+ - [ ] More Config Options
 
 # Build Dependencies
 
