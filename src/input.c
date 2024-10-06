@@ -129,31 +129,59 @@ void input_clean(enum InputMode mode, struct termios *old, int fd) {
     }
 }
 
+int map_arrows(char c) {
+    switch (c) {
+    case 'A':
+        return KEY_UP;
+        break;
+    case 'B':
+        return KEY_DOWN;
+        break;
+    case 'C':
+        return KEY_RIGHT;
+        break;
+    case 'D':
+        return KEY_LEFT;
+        break;
+    default:
+        return 0;
+    }
+}
+
 void get_extkeys_input(int8_t inputs[KEYS], Config *config) {
     int c;
     enum Parser state = INVALID;
     uint32_t key = 0;
-    int8_t pressed = 0;
+    int8_t pressed = 1;
     while ((c = getch()) != ERR) {
         if (c == 27) {
+            if (state < STATE)
+                update_input(config, inputs, key, pressed);
             key = 0;
-            pressed = 0;
+            pressed = 1;
             state = CODE;
             continue;
         }
+        if (c == 'u')
+            state = END;
 
         switch (state) {
         case CODE:
             if ('0' <= c && c <= '9') {
                 key *= 10;
                 key += (c - '0');
-            } else if (c == ';')
+            } else if (c == ';') {
                 state++;
-            else if (c != '[')
+            } else if ('A' <= c && c <= 'D') {
+                key = map_arrows((char) c);
+            } else if (c != '[')
                 state = INVALID;
             break;
         case MOD:
-            if (c == ':') state++;
+            if (c == ':')
+                state++;
+            else if ('A' <= c && c <= 'D')
+                key = map_arrows((char) c);
             break;
         case STATE:
             pressed = (c == '1');
@@ -161,20 +189,7 @@ void get_extkeys_input(int8_t inputs[KEYS], Config *config) {
             break;
         case END:
             if (key == 1 && 'A' <= c && c <= 'D') {
-                switch (c) {
-                case 'A':
-                    key = KEY_UP;
-                    break;
-                case 'B':
-                    key = KEY_DOWN;
-                    break;
-                case 'C':
-                    key = KEY_RIGHT;
-                    break;
-                case 'D':
-                    key = KEY_LEFT;
-                    break;
-                }
+                key = map_arrows((char) c);
             }
             update_input(config, inputs, key, pressed);
             state++;
@@ -183,6 +198,8 @@ void get_extkeys_input(int8_t inputs[KEYS], Config *config) {
             break;
         }
     }
+    if (state < STATE)
+        update_input(config, inputs, key, pressed);
 }
 
 void get_scan_input(int fd, int8_t inputs[KEYS], Config *config) {
