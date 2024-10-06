@@ -7,8 +7,8 @@ SRC = src
 OBJ = build
 INC = include
 
-_DEPS = input.h config.h
-_OBJS = main.o input.o config.o
+_DEPS = input.h config.h game.h
+_OBJS = main.o input.o config.o game.o
 
 DEPS = $(patsubst %,$(INC)/%,$(_DEPS))
 OBJS = $(patsubst %,$(OBJ)/%,$(_OBJS))
