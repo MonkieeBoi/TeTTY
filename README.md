@@ -11,7 +11,6 @@ meaning SRS, hold, harddrop and all that good stuff.
 
  - [ ] ARR
  - [ ] Lock Delay
- - [ ] More Config Options
 
 # Build Dependencies
 

@@ -61,7 +61,11 @@ static int handler(void* user, const char* section, const char* name,
         break;
     }
 
-    if (MATCH(mode_section, "left")) {
+    if (MATCH("handling", "das")) {
+        config->das = atoi(value);
+    } else if (MATCH("handling", "arr")) {
+        config->arr = atoi(value);
+    } else if (MATCH(mode_section, "left")) {
         config->left = atoi(value);
     } else if (MATCH(mode_section, "right")) {
         config->right = atoi(value);
@@ -106,6 +110,8 @@ void config_init(Config *config) {
     char config_path[4096] = { 0 };
     get_config_path(config_path);
 
+    config->arr = 0;
+    config->das = 4;
     switch (config->mode) {
     case EXTKEYS:
         config_init_extkeys(config);

@@ -10,6 +10,8 @@ enum InputMode {
 };
 
 typedef struct Config {
+    uint32_t das;
+    uint32_t arr;
     uint32_t left;
     uint32_t right;
     uint32_t sd;

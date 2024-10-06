@@ -130,7 +130,7 @@ void input_clean(enum InputMode mode, struct termios *old, int fd) {
 }
 
 void get_extkeys_input(int8_t inputs[KEYS], Config *config) {
-    char c;
+    int c;
     enum Parser state = INVALID;
     uint32_t key = 0;
     int8_t pressed = 0;

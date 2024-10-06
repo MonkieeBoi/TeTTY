@@ -22,7 +22,6 @@
 #define SPAWN_Y (BOARD_HEIGHT - 1)
 #define SPAWN_ROT 0
 #define FPS 60
-#define DAS 5
 #define CLEAR_GOAL 40
 #define QUEUE_SZ 5
 #define BAG_SZ 7
@@ -671,19 +670,19 @@ int8_t game(Config *config, int fd) {
                 break;
         }
 
-        if (inputs[LEFT] && rdas_c != DAS - 1) {
+        if (inputs[LEFT] && rdas_c != config->das - 1) {
             ldas_c++;
         } else if (!inputs[LEFT] && ldas_c)
             ldas_c = 0;
 
-        if (inputs[RIGHT] && ldas_c != DAS - 1) {
+        if (inputs[RIGHT] && ldas_c != config->das - 1) {
             rdas_c++;
         } else if (!inputs[RIGHT] && rdas_c)
             rdas_c = 0;
 
-        if (ldas_c > DAS && (rdas_c == 0 || rdas_c > ldas_c))
+        if (ldas_c > config->das && (rdas_c == 0 || rdas_c > ldas_c))
             move_piece(board, curr, 1, -BOARD_WIDTH);
-        if (rdas_c > DAS && (ldas_c == 0 || ldas_c > rdas_c))
+        if (rdas_c > config->das && (ldas_c == 0 || ldas_c > rdas_c))
             move_piece(board, curr, 1, BOARD_WIDTH);
 
         if (inputs[LEFT] && !last_inputs[LEFT])
