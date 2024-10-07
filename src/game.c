@@ -1,5 +1,4 @@
 #include <stdlib.h>
-#include <time.h>
 #include "game.h"
 
 // TODO: figure out better way/place to store this
@@ -182,8 +181,25 @@ const int8_t OFFSETS2[2][4][2][2] = {
     }
 };
 
-void game_init() {
-    srandom(time(NULL));
+void game_init(struct game_data* game) {
+    game->hold              = -1;
+    game->hold_used         = 0;
+    game->queue_pos         = 0;
+    game->ldas_c            = 0;
+    game->rdas_c            = 0;
+    game->grav_c            = 0;
+    game->pieces            = 0;
+    game->holds             = 0;
+    game->keys              = 0;
+    game->keys_buf          = 0;
+    game->cleared           = 0;
+    game->curr              = malloc(sizeof(Piece));
+
+    queue_init(game->queue);
+    for (int i = 0; i < KEYS; i++) {
+        game->inputs[i] = 0;
+        game->last_inputs[i] = 0;
+    }
 }
 
 int8_t check_collide(int8_t board[ARR_HEIGHT][BOARD_WIDTH], int8_t x, int8_t y, int8_t type, int8_t rot) {
@@ -344,4 +360,79 @@ int8_t clear_lines(int8_t board[ARR_HEIGHT][BOARD_WIDTH]) {
         }
     }
     return cleared;
+}
+
+int8_t game_tick(Config *config, struct game_data *data, int8_t board[ARR_HEIGHT][BOARD_WIDTH], int fd) {
+    for (int8_t i = 0; i < KEYS; i++)
+        data->last_inputs[i] = data->inputs[i];
+    get_inputs(config, fd, data->inputs);
+
+    for (int8_t i = 0; i < 8; i++) {
+        data->keys_buf += data->inputs[i] && !data->last_inputs[i];
+    }
+
+    if (data->inputs[RESET] || data->inputs[QUIT])
+        return 1;
+    if (data->inputs[HD] && !data->last_inputs[HD]) {
+        move_piece(board, data->curr, 0, -data->curr->y);
+        lock_piece(board, data->curr);
+        data->queue_pos = queue_pop(data->curr, data->queue, data->queue_pos);
+        data->cleared += clear_lines(board);
+        data->hold_used = 0;
+        data->grav_c = 0;
+        data->pieces++;
+        data->keys += data->keys_buf;
+        data->keys_buf = 0;
+        if (data->cleared >= config->goal)
+            return 1;
+    }
+
+    if (data->inputs[LEFT] && data->rdas_c != config->das - 1) {
+        data->ldas_c++;
+    } else if (!data->inputs[LEFT] && data->ldas_c)
+        data->ldas_c = 0;
+
+    if (data->inputs[RIGHT] && data->ldas_c != config->das - 1) {
+        data->rdas_c++;
+    } else if (!data->inputs[RIGHT] && data->rdas_c)
+        data->rdas_c = 0;
+
+    if (data->ldas_c > config->das && (data->rdas_c == 0 || data->rdas_c > data->ldas_c))
+        move_piece(board, data->curr, 1, -BOARD_WIDTH);
+    if (data->rdas_c > config->das && (data->ldas_c == 0 || data->ldas_c > data->rdas_c))
+        move_piece(board, data->curr, 1, BOARD_WIDTH);
+
+    if (data->inputs[LEFT] && !data->last_inputs[LEFT])
+        move_piece(board, data->curr, 1, -1);
+    if (data->inputs[RIGHT] && !data->last_inputs[RIGHT])
+        move_piece(board, data->curr, 1, 1);
+
+    if (data->inputs[SD])
+        move_piece(board, data->curr, 0, -data->curr->y);
+    if (data->inputs[CCW] && !data->last_inputs[CCW])
+        spin_piece(board, data->curr, 2);
+    if (data->inputs[CW] && !data->last_inputs[CW])
+        spin_piece(board, data->curr, 0);
+    if (data->inputs[FLIP] && !data->last_inputs[FLIP])
+        spin_piece(board, data->curr, 1);
+    if (data->inputs[HOLD] && !data->last_inputs[HOLD]) {
+        if (data->hold == -1) {
+            data->hold = data->curr->type;
+            data->queue_pos = queue_pop(data->curr, data->queue, data->queue_pos);
+            data->holds++;
+        } else if (!data->hold_used) {
+            int8_t tmp = data->hold;
+            data->hold = data->curr->type;
+            gen_piece(data->curr, tmp);
+            data->holds++;
+        }
+        data->hold_used = 1;
+        data->grav_c = 0;
+    }
+
+    // Gravity Movement
+    data->grav_c += config->grav;
+    move_piece(board, data->curr, 0, -(data->grav_c / 1000));
+    data->grav_c %= 1000;
+    return 0;
 }

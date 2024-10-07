@@ -112,6 +112,8 @@ void config_init(Config *config) {
 
     config->arr = 0;
     config->das = 4;
+    config->grav = 20;
+    config->goal = 40;
     switch (config->mode) {
     case EXTKEYS:
         config_init_extkeys(config);

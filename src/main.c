@@ -15,18 +15,6 @@
 #define RIGHT_MARGIN 46
 
 #define FPS 60
-#define CLEAR_GOAL 40
-
-#define LEFT 0
-#define RIGHT 1
-#define SD 2
-#define HD 3
-#define CCW 4
-#define CW 5
-#define FLIP 6
-#define HOLD 7
-#define RESET 8
-#define QUIT 9
 
 #define COLOR_ORANGE 8
 
@@ -239,37 +227,16 @@ int8_t game(Config *config, int fd) {
     WINDOW *key_win = newwin(7, 38, offset_y + 3, offset_x);
     WINDOW *stat_win = newwin(5, 14, offset_y + BOARD_HEIGHT + 1, offset_x + RIGHT_MARGIN + 3);
 
-    Piece *curr = malloc(sizeof(Piece));
+    struct game_data data = { 0 };
+    game_init(&data);
     int8_t board[ARR_HEIGHT][BOARD_WIDTH];
-    for (int8_t i = 0; i < ARR_HEIGHT; i++)
-        for (int8_t j = 0; j < BOARD_WIDTH; j++)
-            board[i][j] = 0;
-
-    int8_t hold = -1;
-    int8_t hold_used = 0;
-    int8_t queue[BAG_SZ];
-    queue_init(queue);
-    int8_t queue_pos = 0;
-    int8_t inputs[KEYS] = { 0 };
-    int8_t last_inputs[KEYS] = { 0 };
-
-    uint32_t grav = 20; // units of 1/1000 blocks per frame
-    uint32_t grav_c = 0;
-    uint8_t ldas_c = 0;
-    uint8_t rdas_c = 0;
-
-    uint32_t pieces = 0;
-    uint32_t holds = 0;
-    uint32_t keys = 0;
-    uint32_t keys_tmp = 0;
-    uint32_t cleared = 0;
 
     mvprintw(offset_y + 11, offset_x + 53, "READY");
     draw_gui(offset_x + 45, offset_y);
 
-    draw_queue(queue_win, queue, queue_pos);
-    draw_hold(hold_win, hold, hold_used);
-    draw_keys(key_win, inputs);
+    draw_queue(queue_win, data.queue, data.queue_pos);
+    draw_hold(hold_win, data.hold, data.hold_used);
+    draw_keys(key_win, data.inputs);
     draw_stats(stat_win, 0, 0, 0, 0);
 
     usleep(500000);
@@ -280,119 +247,49 @@ int8_t game(Config *config, int fd) {
     time_t start_time = get_ms();
     time_t game_time;
 
-    queue_pos = queue_pop(curr, queue, 0);
+    data.queue_pos = queue_pop(data.curr, data.queue, 0);
 
     // Game Loop
     while (1) {
         game_time = get_ms();
-        for (int8_t i = 0; i < KEYS; i++)
-            last_inputs[i] = inputs[i];
-        get_inputs(config, fd, inputs);
-
-        for (int8_t i = 0; i < 8; i++) {
-            keys_tmp += inputs[i] && !last_inputs[i];
-        }
-
-        if (inputs[RESET] || inputs[QUIT])
-            break;
-        if (inputs[HD] && !last_inputs[HD]) {
-            move_piece(board, curr, 0, -curr->y);
-            lock_piece(board, curr);
-            queue_pos = queue_pop(curr, queue, queue_pos);
-            cleared += clear_lines(board);
-            hold_used = 0;
-            grav_c = 0;
-            pieces++;
-            keys += keys_tmp;
-            keys_tmp = 0;
-            if (cleared >= CLEAR_GOAL)
-                break;
-        }
-
-        if (inputs[LEFT] && rdas_c != config->das - 1) {
-            ldas_c++;
-        } else if (!inputs[LEFT] && ldas_c)
-            ldas_c = 0;
-
-        if (inputs[RIGHT] && ldas_c != config->das - 1) {
-            rdas_c++;
-        } else if (!inputs[RIGHT] && rdas_c)
-            rdas_c = 0;
-
-        if (ldas_c > config->das && (rdas_c == 0 || rdas_c > ldas_c))
-            move_piece(board, curr, 1, -BOARD_WIDTH);
-        if (rdas_c > config->das && (ldas_c == 0 || ldas_c > rdas_c))
-            move_piece(board, curr, 1, BOARD_WIDTH);
-
-        if (inputs[LEFT] && !last_inputs[LEFT])
-            move_piece(board, curr, 1, -1);
-        if (inputs[RIGHT] && !last_inputs[RIGHT])
-            move_piece(board, curr, 1, 1);
-
-        if (inputs[SD])
-            move_piece(board, curr, 0, -curr->y);
-        if (inputs[CCW] && !last_inputs[CCW])
-            spin_piece(board, curr, 2);
-        if (inputs[CW] && !last_inputs[CW])
-            spin_piece(board, curr, 0);
-        if (inputs[FLIP] && !last_inputs[FLIP])
-            spin_piece(board, curr, 1);
-        if (inputs[HOLD] && !last_inputs[HOLD]) {
-            if (hold == -1) {
-                hold = curr->type;
-                queue_pos = queue_pop(curr, queue, queue_pos);
-                holds++;
-            } else if (!hold_used) {
-                int8_t tmp = hold;
-                hold = curr->type;
-                gen_piece(curr, tmp);
-                holds++;
-            }
-            hold_used = 1;
-            grav_c = 0;
-        }
+        if (game_tick(config, &data, board, fd)) break;
 
         // Updates
-        draw_board(board_win, board, curr, CLEAR_GOAL - cleared, 0);
-        draw_queue(queue_win, queue, queue_pos);
-        draw_hold(hold_win, hold, hold_used);
-        draw_keys(key_win, inputs);
-        draw_stats(stat_win, game_time - start_time, pieces, keys, holds);
-
-        // Gravity Movement
-        grav_c += grav;
-        move_piece(board, curr, 0, -(grav_c / 1000));
-        grav_c %= 1000;
+        draw_board(board_win, board, data.curr, config->goal - data.cleared, 0);
+        draw_queue(queue_win, data.queue, data.queue_pos);
+        draw_hold(hold_win, data.hold, data.hold_used);
+        draw_keys(key_win, data.inputs);
+        draw_stats(stat_win, game_time - start_time, data.pieces, data.keys, data.holds);
 
         usleep(1000000 / FPS - (get_ms() - game_time));
     }
 
     // Post game screen
-    if (cleared >= CLEAR_GOAL) {
-        draw_board(board_win, board, curr, 21, 1);
-        draw_stats(stat_win, game_time - start_time, pieces, keys, holds);
+    if (data.cleared >= config->goal) {
+        draw_board(board_win, board, data.curr, 21, 1);
+        draw_stats(stat_win, game_time - start_time, data.pieces, data.keys, data.holds);
         while (1) {
-            get_inputs(config, fd, inputs);
-            if (inputs[RESET] || inputs[QUIT])
+            get_inputs(config, fd, data.inputs);
+            if (data.inputs[RESET] || data.inputs[QUIT])
                 break;
-            draw_keys(key_win, inputs);
+            draw_keys(key_win, data.inputs);
             usleep(1000000 / FPS);
         }
     }
 
-    free(curr);
+    free(data.curr);
     delwin(board_win);
     delwin(queue_win);
     delwin(hold_win);
     delwin(key_win);
     clear();
 
-    return inputs[QUIT];
+    return data.inputs[QUIT];
 }
 
 int main() {
     setlocale(LC_ALL, "");
-    game_init();
+    srandom(time(NULL));
 
     struct termios old;
     struct termios new;
