@@ -360,6 +360,57 @@ int8_t clear_lines(int8_t board[ARR_HEIGHT][BOARD_WIDTH]) {
     return cleared;
 }
 
+int8_t handle_hard_drop(Config *config, struct game_data *data, int8_t board[ARR_HEIGHT][BOARD_WIDTH]) {
+    move_piece(board, data->curr, 0, -data->curr->y);
+    lock_piece(board, data->curr);
+    data->queue_pos = queue_pop(data->curr, data->queue, data->queue_pos);
+    data->cleared += clear_lines(board);
+    data->hold_used = 0;
+    data->grav_c = 0;
+    data->pieces++;
+    data->keys += data->keys_buf;
+    data->keys_buf = 0;
+    return data->cleared >= config->goal;
+}
+
+void handle_das(Config *config, struct game_data *data, int8_t board[ARR_HEIGHT][BOARD_WIDTH]) {
+    #define HELD(key) (data->inputs[key])
+    #define TAPPED(key) (data->inputs[key] && !data->last_inputs[key])
+
+    if (HELD(LEFT) && data->rdas_c != config->das - 1) {
+        data->ldas_c++;
+    } else if (!HELD(LEFT) && data->ldas_c)
+        data->ldas_c = 0;
+
+    if (HELD(RIGHT) && data->ldas_c != config->das - 1) {
+        data->rdas_c++;
+    } else if (!HELD(RIGHT) && data->rdas_c)
+        data->rdas_c = 0;
+
+    if (data->ldas_c > config->das && (data->rdas_c == 0 || data->rdas_c > data->ldas_c))
+        move_piece(board, data->curr, 1, -BOARD_WIDTH);
+    if (data->rdas_c > config->das && (data->ldas_c == 0 || data->ldas_c > data->rdas_c))
+        move_piece(board, data->curr, 1, BOARD_WIDTH);
+
+    #undef HELD
+    #undef TAPPED
+}
+
+void handle_hold(struct game_data *data) {
+    if (data->hold == -1) {
+        data->hold = data->curr->type;
+        data->queue_pos = queue_pop(data->curr, data->queue, data->queue_pos);
+        data->holds++;
+    } else if (!data->hold_used) {
+        int8_t tmp = data->hold;
+        data->hold = data->curr->type;
+        gen_piece(data->curr, tmp);
+        data->holds++;
+    }
+    data->hold_used = 1;
+    data->grav_c = 0;
+}
+
 int8_t game_tick(Config *config, struct game_data *data, int8_t board[ARR_HEIGHT][BOARD_WIDTH], int fd) {
     for (int8_t i = 0; i < KEYS; i++)
         data->last_inputs[i] = data->inputs[i];
@@ -369,64 +420,28 @@ int8_t game_tick(Config *config, struct game_data *data, int8_t board[ARR_HEIGHT
         data->keys_buf += data->inputs[i] && !data->last_inputs[i];
     }
 
-    if (data->inputs[RESET] || data->inputs[QUIT])
+    #define HELD(key) (data->inputs[key])
+    #define TAPPED(key) (data->inputs[key] && !data->last_inputs[key])
+
+    if (HELD(RESET) || HELD(QUIT))
         return 1;
-    if (data->inputs[HD] && !data->last_inputs[HD]) {
-        move_piece(board, data->curr, 0, -data->curr->y);
-        lock_piece(board, data->curr);
-        data->queue_pos = queue_pop(data->curr, data->queue, data->queue_pos);
-        data->cleared += clear_lines(board);
-        data->hold_used = 0;
-        data->grav_c = 0;
-        data->pieces++;
-        data->keys += data->keys_buf;
-        data->keys_buf = 0;
-        if (data->cleared >= config->goal)
-            return 1;
-    }
+    if (TAPPED(HD) && handle_hard_drop(config, data, board))
+        return 1;
 
-    if (data->inputs[LEFT] && data->rdas_c != config->das - 1) {
-        data->ldas_c++;
-    } else if (!data->inputs[LEFT] && data->ldas_c)
-        data->ldas_c = 0;
+    handle_das(config, data, board);
 
-    if (data->inputs[RIGHT] && data->ldas_c != config->das - 1) {
-        data->rdas_c++;
-    } else if (!data->inputs[RIGHT] && data->rdas_c)
-        data->rdas_c = 0;
+    if (TAPPED(LEFT))  move_piece(board, data->curr, 1, -1);
+    if (TAPPED(RIGHT)) move_piece(board, data->curr, 1, 1);
+    if (HELD(SD))      move_piece(board, data->curr, 0, -data->curr->y);
 
-    if (data->ldas_c > config->das && (data->rdas_c == 0 || data->rdas_c > data->ldas_c))
-        move_piece(board, data->curr, 1, -BOARD_WIDTH);
-    if (data->rdas_c > config->das && (data->ldas_c == 0 || data->ldas_c > data->rdas_c))
-        move_piece(board, data->curr, 1, BOARD_WIDTH);
+    if (TAPPED(CCW))   spin_piece(board, data->curr, 2);
+    if (TAPPED(CW))    spin_piece(board, data->curr, 0);
+    if (TAPPED(FLIP))  spin_piece(board, data->curr, 1);
 
-    if (data->inputs[LEFT] && !data->last_inputs[LEFT])
-        move_piece(board, data->curr, 1, -1);
-    if (data->inputs[RIGHT] && !data->last_inputs[RIGHT])
-        move_piece(board, data->curr, 1, 1);
+    if (TAPPED(HOLD))  handle_hold(data);
 
-    if (data->inputs[SD])
-        move_piece(board, data->curr, 0, -data->curr->y);
-    if (data->inputs[CCW] && !data->last_inputs[CCW])
-        spin_piece(board, data->curr, 2);
-    if (data->inputs[CW] && !data->last_inputs[CW])
-        spin_piece(board, data->curr, 0);
-    if (data->inputs[FLIP] && !data->last_inputs[FLIP])
-        spin_piece(board, data->curr, 1);
-    if (data->inputs[HOLD] && !data->last_inputs[HOLD]) {
-        if (data->hold == -1) {
-            data->hold = data->curr->type;
-            data->queue_pos = queue_pop(data->curr, data->queue, data->queue_pos);
-            data->holds++;
-        } else if (!data->hold_used) {
-            int8_t tmp = data->hold;
-            data->hold = data->curr->type;
-            gen_piece(data->curr, tmp);
-            data->holds++;
-        }
-        data->hold_used = 1;
-        data->grav_c = 0;
-    }
+    #undef HELD
+    #undef TAPPED
 
     // Gravity Movement
     data->grav_c += config->grav;
