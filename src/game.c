@@ -249,21 +249,19 @@ void spin_piece(int8_t board[ARR_HEIGHT][BOARD_WIDTH], Piece *p, int8_t spin) {
     // 1 = 180
     // 2 = ccw
     int8_t init_rot = p->rot;
-    int8_t class = 0;
-    if (p->type == 0) class = 1;
-    if (p->type == 3) class = 2;
+    // 0 -> 1, 3 -> 2, else -> 0
+    int8_t class = p->type == 3 ? 2 : !p->type;
     p->rot = (p->rot + spin + 1) % 4;
 
     int8_t collision = 0;
-    for (int8_t i = 0; i < 5; i++) {
+    int8_t checks = spin == 1 ? 2 : 5;
+    for (int8_t i = 0; i < checks; i++) {
         int8_t x = p->x + (OFFSETS[class][init_rot][i][0] - OFFSETS[class][p->rot][i][0]);
         int8_t y = p->y + (OFFSETS[class][init_rot][i][1] - OFFSETS[class][p->rot][i][1]);
 
         if (class != 2 && spin == 1) {
             x = p->x + (OFFSETS2[class][init_rot][i][0] - OFFSETS2[class][p->rot][i][0]);
             y = p->y + (OFFSETS2[class][init_rot][i][1] - OFFSETS2[class][p->rot][i][1]);
-            if (i > 2)
-                break;
         }
 
         collision = check_collide(board, x, y, p->type, p->rot);
@@ -323,7 +321,7 @@ int8_t queue_pop(Piece *p, int8_t queue[], int8_t queue_pos) {
 
 }
 
-void queue_init (int8_t queue[]) {
+void queue_init(int8_t queue[]) {
     int8_t bag[BAG_SZ];
     for (int8_t i = 0; i < BAG_SZ; i++)
         bag[i] = i;

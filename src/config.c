@@ -46,7 +46,6 @@ static int handler(void* user, const char* section, const char* name,
                    const char* value) {
     Config *config = (Config*) user;
 
-    #define MATCH(s, n) (strcmp(section, s) == 0 && strcmp(name, n) == 0)
     char *mode_section = NULL;
 
     switch (config->mode) {
@@ -61,34 +60,23 @@ static int handler(void* user, const char* section, const char* name,
         break;
     }
 
-    if (MATCH("handling", "das")) {
-        config->das = atoi(value);
-    } else if (MATCH("handling", "arr")) {
-        config->arr = atoi(value);
-    } else if (MATCH(mode_section, "left")) {
-        config->left = atoi(value);
-    } else if (MATCH(mode_section, "right")) {
-        config->right = atoi(value);
-    } else if (MATCH(mode_section, "sd")) {
-        config->sd = atoi(value);
-    } else if (MATCH(mode_section, "hd")) {
-        config->hd = atoi(value);
-    } else if (MATCH(mode_section, "ccw")) {
-        config->ccw = atoi(value);
-    } else if (MATCH(mode_section, "cw")) {
-        config->cw = atoi(value);
-    } else if (MATCH(mode_section, "180")) {
-        config->flip = atoi(value);
-    } else if (MATCH(mode_section, "hold")) {
-        config->hold = atoi(value);
-    } else if (MATCH(mode_section, "reset")) {
-        config->reset = atoi(value);
-    } else if (MATCH(mode_section, "quit")) {
-        config->quit = atoi(value);
-    } else {
-        return 0;
-    }
-    return 1;
+    #define MATCH(s, n) (strcmp(section, s) == 0 && strcmp(name, n) == 0)
+
+    if (MATCH("handling", "das"))     { config->das   = atoi(value); return 1; }
+    if (MATCH("handling", "arr"))     { config->arr   = atoi(value); return 1; }
+    if (MATCH(mode_section, "left"))  { config->left  = atoi(value); return 1; }
+    if (MATCH(mode_section, "right")) { config->right = atoi(value); return 1; }
+    if (MATCH(mode_section, "sd"))    { config->sd    = atoi(value); return 1; }
+    if (MATCH(mode_section, "hd"))    { config->hd    = atoi(value); return 1; }
+    if (MATCH(mode_section, "ccw"))   { config->ccw   = atoi(value); return 1; }
+    if (MATCH(mode_section, "cw"))    { config->cw    = atoi(value); return 1; }
+    if (MATCH(mode_section, "180"))   { config->flip  = atoi(value); return 1; }
+    if (MATCH(mode_section, "hold"))  { config->hold  = atoi(value); return 1; }
+    if (MATCH(mode_section, "reset")) { config->reset = atoi(value); return 1; }
+    if (MATCH(mode_section, "quit"))  { config->quit  = atoi(value); return 1; }
+
+    #undef MATCH
+    return 0;
 }
 
 void get_config_path(char *config_path) {
