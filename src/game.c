@@ -387,10 +387,24 @@ void handle_das(Config *config, struct game_data *data, int8_t board[ARR_HEIGHT]
     } else if (!HELD(RIGHT) && data->rdas_c)
         data->rdas_c = 0;
 
-    if (data->ldas_c > config->das && (data->rdas_c == 0 || data->rdas_c > data->ldas_c))
-        move_piece(board, data->curr, 1, -BOARD_WIDTH);
-    if (data->rdas_c > config->das && (data->ldas_c == 0 || data->ldas_c > data->rdas_c))
-        move_piece(board, data->curr, 1, BOARD_WIDTH);
+    if (data->ldas_c > config->das && (data->rdas_c == 0 || data->rdas_c > data->ldas_c)) {
+        if (config->arr == 0)
+            move_piece(board, data->curr, 1, -BOARD_WIDTH);
+        else {
+            data->arr_c++;
+            move_piece(board, data->curr, 1, -(data->arr_c / config->arr));
+            data->arr_c %= config->arr;
+        }
+    }
+    if (data->rdas_c > config->das && (data->ldas_c == 0 || data->ldas_c > data->rdas_c)) {
+        if (config->arr == 0)
+            move_piece(board, data->curr, 1, BOARD_WIDTH);
+        else {
+            data->arr_c++;
+            move_piece(board, data->curr, 1, data->arr_c / config->arr);
+            data->arr_c %= config->arr;
+        }
+    }
 
     #undef HELD
     #undef TAPPED

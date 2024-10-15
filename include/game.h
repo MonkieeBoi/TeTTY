@@ -43,6 +43,7 @@ struct game_data {
     uint8_t ldas_c;
     uint8_t rdas_c;
     uint32_t grav_c;
+    uint32_t arr_c;
     uint32_t pieces;
     uint32_t holds;
     uint32_t keys;

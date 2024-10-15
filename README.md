@@ -9,7 +9,6 @@ meaning SRS, hold, harddrop and all that good stuff.
 
 # Todo
 
- - [ ] ARR
  - [ ] Lock Delay
 
 # Build Dependencies
