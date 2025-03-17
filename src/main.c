@@ -229,7 +229,7 @@ int8_t game(Config *config, int fd) {
 
     struct game_data data = { 0 };
     game_init(&data);
-    int8_t board[ARR_HEIGHT][BOARD_WIDTH];
+    int8_t board[ARR_HEIGHT][BOARD_WIDTH] = { 0 };
 
     mvprintw(offset_y + 11, offset_x + 53, "READY");
     draw_gui(offset_x + 45, offset_y);
