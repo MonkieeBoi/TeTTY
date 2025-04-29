@@ -38,6 +38,7 @@ struct game_data {
     int8_t hold_used;
     int8_t queue[BAG_SZ];
     int8_t queue_pos;
+    int8_t bag[BAG_SZ];
     int8_t inputs[KEYS];
     int8_t last_inputs[KEYS];
     uint8_t ldas_c;
@@ -64,11 +65,11 @@ void spin_piece(int8_t board[ARR_HEIGHT][BOARD_WIDTH], Piece *p, int8_t spin);
 
 void lock_piece(int8_t board[ARR_HEIGHT][BOARD_WIDTH], Piece *p);
 
-int8_t queue_pop(Piece *p, int8_t queue[], int8_t queue_pos);
+int8_t queue_pop(Piece *p, int8_t queue[], int8_t bag[], int8_t queue_pos);
 
 void gen_piece(Piece *p, int8_t type);
 
-void queue_init (int8_t queue[]);
+void queue_init (int8_t queue[], int8_t bag[]);
 
 int8_t clear_lines(int8_t board[ARR_HEIGHT][BOARD_WIDTH]);
 

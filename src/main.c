@@ -247,7 +247,7 @@ int8_t game(Config *config, int fd) {
     time_t start_time = get_ms();
     time_t game_time;
 
-    data.queue_pos = queue_pop(data.curr, data.queue, 0);
+    data.queue_pos = queue_pop(data.curr, data.queue, data.bag, 0);
 
     // Game Loop
     while (1) {

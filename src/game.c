@@ -195,7 +195,7 @@ void game_init(struct game_data* game) {
     game->cleared           = 0;
     game->curr              = malloc(sizeof(Piece));
 
-    queue_init(game->queue);
+    queue_init(game->queue, game->bag);
     for (int i = 0; i < KEYS; i++) {
         game->inputs[i] = 0;
         game->last_inputs[i] = 0;
@@ -301,28 +301,23 @@ void gen_piece(Piece *p, int8_t type) {
     }
 }
 
-int8_t queue_pop(Piece *p, int8_t queue[], int8_t queue_pos) {
+int8_t queue_pop(Piece *p, int8_t queue[], int8_t bag[], int8_t queue_pos) {
     gen_piece(p, queue[queue_pos]);
 
-    int8_t rand = random() % (BAG_SZ - queue_pos);
-    int8_t used[BAG_SZ] = { 0 };
-    int8_t bag[BAG_SZ];
-    int8_t bag_pos = 0;
-
-    for (int8_t i = 0; i < queue_pos; i++)
-        used[queue[i]] = 1;
-
-    for (int8_t i = 0; i < BAG_SZ; i++)
-        if (!used[i])
-            bag[bag_pos++] = i;
+    int8_t bag_len = BAG_SZ - queue_pos;
+    int8_t rand = random() % (bag_len);
 
     queue[queue_pos] = bag[rand];
+    bag[rand] = bag[bag_len - 1];
+    if (bag_len == 1) {
+        for (int8_t i = 0; i < BAG_SZ; i++)
+            bag[i] = i;
+    }
     return (queue_pos + 1) % BAG_SZ;
 
 }
 
-void queue_init(int8_t queue[]) {
-    int8_t bag[BAG_SZ];
+void queue_init(int8_t queue[], int8_t bag[]) {
     for (int8_t i = 0; i < BAG_SZ; i++)
         bag[i] = i;
 
@@ -333,6 +328,9 @@ void queue_init(int8_t queue[]) {
     }
 
     queue[BAG_SZ - 1] = bag[0];
+
+    for (int8_t i = 0; i < BAG_SZ; i++)
+        bag[i] = i;
 }
 
 int8_t clear_lines(int8_t board[ARR_HEIGHT][BOARD_WIDTH]) {
@@ -363,7 +361,7 @@ int8_t clear_lines(int8_t board[ARR_HEIGHT][BOARD_WIDTH]) {
 int8_t handle_hard_drop(Config *config, struct game_data *data, int8_t board[ARR_HEIGHT][BOARD_WIDTH]) {
     move_piece(board, data->curr, 0, -data->curr->y);
     lock_piece(board, data->curr);
-    data->queue_pos = queue_pop(data->curr, data->queue, data->queue_pos);
+    data->queue_pos = queue_pop(data->curr, data->queue, data->bag, data->queue_pos);
     data->cleared += clear_lines(board);
     data->hold_used = 0;
     data->grav_c = 0;
@@ -413,7 +411,7 @@ void handle_das(Config *config, struct game_data *data, int8_t board[ARR_HEIGHT]
 void handle_hold(struct game_data *data) {
     if (data->hold == -1) {
         data->hold = data->curr->type;
-        data->queue_pos = queue_pop(data->curr, data->queue, data->queue_pos);
+        data->queue_pos = queue_pop(data->curr, data->queue, data->bag, data->queue_pos);
         data->holds++;
     } else if (!data->hold_used) {
         int8_t tmp = data->hold;
